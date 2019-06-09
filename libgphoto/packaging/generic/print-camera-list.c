@@ -1,8 +1,8 @@
 /* print-camera-list - print libgphoto2 camera list in different formats
  *
- * Copyright © 2002,2005 Hans Ulrich Niedermann <hun@users.sourceforge.net>
- * Portions Copyright © 2002 Lutz Müller <lutz@users.sourceforge.net>
- * Portions Copyright © 2005 Julien BLACHE <jblache@debian.org>
+ * Copyright 2002,2005 Hans Ulrich Niedermann <hun@users.sourceforge.net>
+ * Portions Copyright 2002 Lutz Mueller <lutz@users.sourceforge.net>
+ * Portions Copyright 2005 Julien BLACHE <jblache@debian.org>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -220,7 +220,6 @@ hotplug_camera_func (const func_params_t *params,
 {
 	int flags = 0;
 	int class = 0, subclass = 0, proto = 0;
-	int usb_vendor = 0, usb_product = 0;
 	const char *usermap_script = 
 		((*params->argv)[0] != NULL)
 		?((*params->argv)[0])
@@ -233,8 +232,6 @@ hotplug_camera_func (const func_params_t *params,
 			proto = 0;
 			flags = (GP_USB_HOTPLUG_MATCH_VENDOR_ID 
 				 | GP_USB_HOTPLUG_MATCH_PRODUCT_ID);
-			usb_vendor = a->usb_vendor;
-			usb_product = a->usb_product;
 		} else if ((a->usb_class) && (a->usb_class != 666)) {
 			class = a->usb_class;
 			subclass = a->usb_subclass;
@@ -248,8 +245,6 @@ hotplug_camera_func (const func_params_t *params,
 				flags |= GP_USB_HOTPLUG_MATCH_INT_PROTOCOL;
 			else
 				proto = 0;
-			usb_vendor = 0;
-			usb_product = 0;
 		}
 	} else {
 		/* not a USB camera */
@@ -370,7 +365,8 @@ typedef enum {
 		UDEV_PRE_0_98 = 0,
 		UDEV_0_98 = 1,
 		UDEV_136 = 2,
-		UDEV_175 = 3
+		UDEV_175 = 3,
+		UDEV_201 = 4
 } udev_version_t;
 
 static const StringFlagItem udev_version_t_map[] = {
@@ -378,6 +374,7 @@ static const StringFlagItem udev_version_t_map[] = {
 	{ "0.98", UDEV_0_98 },
 	{ "136", UDEV_136 },
 	{ "175", UDEV_175 },
+	{ "201", UDEV_201 },
 	{ NULL, 0 }
 };
 
@@ -426,7 +423,15 @@ udev_parse_params (const func_params_t *params, void **data)
 		"ENV{ID_USB_INTERFACES}==\"*:08*:*\", GOTO=\"libgphoto2_usb_end\"\n"
 		/* shortcut the most common camera driver, ptp class, so we avoid parsing 1000
 		 * more rules . It will be completed in udev_begin_func() */
-		"ENV{ID_USB_INTERFACES}==\"*:060101:*\", ENV{ID_GPHOTO2}=\"1\", ENV{GPHOTO2_DRIVER}=\"PTP\", "
+		"ENV{ID_USB_INTERFACES}==\"*:060101:*\", ENV{ID_GPHOTO2}=\"1\", ENV{GPHOTO2_DRIVER}=\"PTP\", ",
+
+		/* UDEV_201 ... regular stuff is done via hwdb, only scsi generic here. */
+		"ACTION!=\"add\", GOTO=\"libgphoto2_rules_end\"\n"
+		"SUBSYSTEM!=\"usb\", GOTO=\"libgphoto2_usb_end\"\n"
+		"ENV{ID_USB_INTERFACES}==\"\", IMPORT{builtin}=\"usb_id\"\n"
+		/* shortcut the most common camera driver, ptp class, so we avoid parsing 1000
+		 * more rules . It will be completed in udev_begin_func() */
+		"ENV{ID_USB_INTERFACES}==\"*:060101:*\", ENV{ID_GPHOTO2}=\"1\", ENV{GPHOTO2_DRIVER}=\"PTP\"",
 	};
 	static const char * const usbcam_strings[] = {
 		/* UDEV_PRE_0_98 */
@@ -436,7 +441,9 @@ udev_parse_params (const func_params_t *params, void **data)
 		/* UDEV_136 */
 		"ATTRS{idVendor}==\"%04x\", ATTRS{idProduct}==\"%04x\", ENV{ID_GPHOTO2}=\"1\", ENV{GPHOTO2_DRIVER}=\"proprietary\"",
 		/* UDEV_175 */
-		"ATTRS{idVendor}==\"%04x\", ATTRS{idProduct}==\"%04x\", ENV{ID_GPHOTO2}=\"1\", ENV{GPHOTO2_DRIVER}=\"proprietary\""
+		"ATTRS{idVendor}==\"%04x\", ATTRS{idProduct}==\"%04x\", ENV{ID_GPHOTO2}=\"1\", ENV{GPHOTO2_DRIVER}=\"proprietary\"",
+		/* UDEV_201 */
+		""
 	};
 	static const char * const usbdisk_strings[] = {
 		/* UDEV_PRE_0_98 */
@@ -446,6 +453,8 @@ udev_parse_params (const func_params_t *params, void **data)
 		/* UDEV_136 */
 		"KERNEL==\"%s\", ATTRS{idVendor}==\"%04x\", ATTRS{idProduct}==\"%04x\", ENV{ID_GPHOTO2}=\"1\", ENV{GPHOTO2_DRIVER}=\"proprietary\"",
 		/* UDEV_175 */
+		"KERNEL==\"%s\", ATTRS{idVendor}==\"%04x\", ATTRS{idProduct}==\"%04x\", ENV{ID_GPHOTO2}=\"1\", ENV{GPHOTO2_DRIVER}=\"proprietary\"",
+		/* UDEV_201 */
 		"KERNEL==\"%s\", ATTRS{idVendor}==\"%04x\", ATTRS{idProduct}==\"%04x\", ENV{ID_GPHOTO2}=\"1\", ENV{GPHOTO2_DRIVER}=\"proprietary\""
 	};
 	udev_persistent_data_t *pdata;
@@ -495,6 +504,8 @@ udev_parse_params (const func_params_t *params, void **data)
 					|| pdata->owner != NULL)) {
 		FATAL("The <script> parameter conflicts with the <mode,group,owner> parameters.");
 	}
+	if (pdata->version >= UDEV_201)
+		fprintf(stderr,"NOTE: You need to generate a hwdb too, this file just contains the scsi generic device entries.\n");
 
 	pdata->begin_string = begin_strings[pdata->version];
 	pdata->usbcam_string = usbcam_strings[pdata->version];
@@ -574,7 +585,6 @@ udev_camera_func (const func_params_t *params,
 {
 	int flags = 0;
 	int class = 0, subclass = 0, proto = 0;
-	int usb_vendor = 0, usb_product = 0;
 	int has_valid_rule = 0;
 	udev_persistent_data_t *pdata = (udev_persistent_data_t *) data;
 	ASSERT(pdata != NULL);
@@ -582,14 +592,14 @@ udev_camera_func (const func_params_t *params,
 	if (!(a->port & GP_PORT_USB))
 		return 0;
 
+	if (pdata->version == UDEV_201) return 0;
+
 	if (a->usb_vendor) { /* usb product id may be zero! */
 		class = 0;
 		subclass = 0;
 		proto = 0;
 		flags = (GP_USB_HOTPLUG_MATCH_VENDOR_ID 
 			 | GP_USB_HOTPLUG_MATCH_PRODUCT_ID);
-		usb_vendor = a->usb_vendor;
-		usb_product = a->usb_product;
 	} else {
 		if (a->usb_class) {
 			class = a->usb_class;
@@ -604,8 +614,6 @@ udev_camera_func (const func_params_t *params,
 				flags |= GP_USB_HOTPLUG_MATCH_INT_PROTOCOL;
 			else
 				proto = 0;
-			usb_vendor = 0;
-			usb_product = 0;
 		}
 	}
 
@@ -733,6 +741,9 @@ udev_camera_func2 (const func_params_t *params,
 static int
 hwdb_begin_func (const func_params_t *params, void **data)
 {
+	fprintf(stderr,"NOTE: You should generate a udev rules file with udev-version 201\n");
+	fprintf(stderr,"or later to support cameras that use SCSI tunneling support, like\n");
+	fprintf(stderr,"various picture frames, Olympus remote control support.\n");
 	printf ("# hardware database file for libgphoto2 devices\n");
 	return 0;
 }
@@ -782,7 +793,7 @@ hwdb_camera_func (const func_params_t *params,
 			/* device class matcher ... */
 			/*printf("usb:v*p*d*dc%02ddsc%02dp%02d*\"\n GPHOTO2_DRIVER=PTP\n", class, subclass, proto);*/
 			/* but we need an interface class matcher, ptp is a interface */
-			printf("usb:v*p*d*ic%02disc%02ip%02d*\n GPHOTO2_DRIVER=PTP\n", class, subclass, proto);
+			printf("usb:v*ic%02disc%02dip%02d*\n GPHOTO2_DRIVER=PTP\n", class, subclass, proto);
 			has_valid_rule = 1;
 		} else {
 			if (class == 666) {
@@ -1279,7 +1290,8 @@ html_begin_func (const func_params_t *params, void **data) {
 
 static char*
 escape_html(const char *str) {
-	char *s, *newstr, *ns;
+	const char *s;
+	char *newstr, *ns;
 	int inc = 0;
 
 	s = str;
@@ -1561,7 +1573,8 @@ static const output_format_t formats[] = {
 	 "        If you give a script parameter, the mode, owner, group parameters will be ignored.\n"
 	 "        For mode \"136\" put it into /lib/udev/rules.d/40-libgphoto2.rules;\n"
 	 "        you can still use mode/owner/group, but the preferred mode of operation\n"
-	 "        is to use udev-extras for dynamic access permissions.\n",
+	 "        is to use udev-extras for dynamic access permissions.\n"
+	"	  Available versions of the rule generator: 0.98, 136, 175, 201.\n",
 	 "[script <PATH_TO_SCRIPT>|version <version>|mode <mode>|owner <owner>|group <group>]*",
 	 udev_begin_func, 
 	 udev_camera_func,
@@ -1611,8 +1624,7 @@ static const output_format_t formats[] = {
 	 ddb_end_func
 	},
 #endif
-	{NULL, NULL, NULL, NULL, 
-	 NULL, NULL, NULL}
+	{NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL}
 };
 
 

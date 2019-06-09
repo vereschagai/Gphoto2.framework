@@ -3,7 +3,7 @@
  * Fuji Camera library for the gphoto project.
  *
  * © 2001 Matthew G. Martin <matt.martin@ieee.org>
- *     2002 Lutz Müller <lutz@users.sourceforge.net>
+ *     2002 Lutz Mueller <lutz@users.sourceforge.net>
  *
  * This routine works for Fuji DS-7 and DX-5,7,10 and
  * MX-500,600,700,1200,1700,2700,2900,  Apple QuickTake 200,
@@ -20,10 +20,10 @@
  *
  *  Portions of this code were adapted from
  *  GDS7 v0.1 interactive digital image transfer software for DS-7 camera
- *  Copyright © 1998 Matthew G. Martin
+ *  Copyright 1998 Matthew G. Martin
 
  *  Some of which was derived from get_ds7 , a Perl Language library
- *  Copyright © 1997 Mamoru Ohno
+ *  Copyright 1997 Mamoru Ohno
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -115,13 +115,13 @@ fuji_ping (Camera *camera, GPContext *context)
 	GP_DEBUG ("Pinging camera...");
 
 	/* Drain input */
-	while (gp_port_read (camera->port, &b, 1) >= 0);
+	while (gp_port_read (camera->port, (char *)&b, 1) >= 0);
 
 	i = 0;
 	while (1) {
 		b = ENQ;
-		CR (gp_port_write (camera->port, &b, 1));
-		r = gp_port_read (camera->port, &b, 1);
+		CR (gp_port_write (camera->port, (char *)&b, 1));
+		r = gp_port_read (camera->port, (char *)&b, 1);
 		if ((r >= 0) && (b == ACK))
 			return (GP_OK);
 		i++;
@@ -143,7 +143,7 @@ fuji_send (Camera *camera, unsigned char *cmd, unsigned int cmd_len,
         /* Send header */
         b[0] = ESC;
         b[1] = STX;
-        CR (gp_port_write (camera->port, b, 2));
+        CR (gp_port_write (camera->port, (char *)b, 2));
 
         /*
 	 * Escape the data we are going to send.
@@ -162,13 +162,13 @@ fuji_send (Camera *camera, unsigned char *cmd, unsigned int cmd_len,
         }
 
         /* Send data */
-        CR (gp_port_write (camera->port, b, cmd_len));
+        CR (gp_port_write (camera->port, (char *)b, cmd_len));
 
         /* Send footer */
         b[0] = ESC;
         b[1] = (last ? ETX : ETB);
         b[2] = check;
-        CR (gp_port_write (camera->port, b, 3));
+        CR (gp_port_write (camera->port, (char *)b, 3));
 
 	return (GP_OK);
 }
@@ -184,7 +184,7 @@ fuji_recv (Camera *camera, unsigned char *buf, unsigned int *buf_len,
 	 * Read the header. The checksum covers all bytes between
 	 * ESC STX and ESC ET[X,B].
 	 */
-	CR (gp_port_read (camera->port, b, 6));
+	CR (gp_port_read (camera->port, (char *)b, 6));
 
 	/* Verify the header */
 	if ((b[0] != ESC) || (b[1] != STX)) {
@@ -209,9 +209,9 @@ fuji_recv (Camera *camera, unsigned char *buf, unsigned int *buf_len,
 
 	/* Read the data. Unescape it. Calculate the checksum. */
 	for (i = 0; i < *buf_len; i++) {
-		CR (gp_port_read (camera->port, buf + i, 1));
+		CR (gp_port_read (camera->port, (char *)buf + i, 1));
 		if (buf[i] == ESC) {
-			CR (gp_port_read (camera->port, buf + i, 1));
+			CR (gp_port_read (camera->port, (char *)buf + i, 1));
 			if (buf[i] != ESC) {
 				gp_context_error (context,
 					_("Wrong escape sequence: "
@@ -219,7 +219,7 @@ fuji_recv (Camera *camera, unsigned char *buf, unsigned int *buf_len,
 					ESC, buf[i]);
 
 				/* Dump the remaining data */
-				while (gp_port_read (camera->port, b, 1) >= 0);
+				while (gp_port_read (camera->port, (char *)b, 1) >= 0);
 
 				return (GP_ERROR_CORRUPTED_DATA);
 			}
@@ -228,7 +228,7 @@ fuji_recv (Camera *camera, unsigned char *buf, unsigned int *buf_len,
 	}
 
 	/* Read the footer */
-	CR (gp_port_read (camera->port, b, 3));
+	CR (gp_port_read (camera->port, (char *)b, 3));
 	if (b[0] != ESC) {
 		gp_context_error (context,
 			_("Bad data - got 0x%02x, expected 0x%02x."),
@@ -281,7 +281,7 @@ fuji_transmit (Camera *camera, unsigned char *cmd, unsigned int cmd_len,
 		CR (fuji_send (camera, cmd, cmd_len, 1, context));
 
 		/* Receive ACK (hopefully) */
-		CR (gp_port_read (camera->port, &c, 1));
+		CR (gp_port_read (camera->port, (char *)&c, 1));
 		switch (c) {
 		case ACK:
 			break;
@@ -324,12 +324,12 @@ fuji_transmit (Camera *camera, unsigned char *cmd, unsigned int cmd_len,
 		r = fuji_recv (camera, buf + *buf_len, &b_len, &last, context);
 		if (r < 0) {
 			retries++;
-			while (gp_port_read (camera->port, &c, 1) >= 0);
+			while (gp_port_read (camera->port, (char *)&c, 1) >= 0);
 			if (++retries > 2)
 			    return (r);
 			GP_DEBUG ("Retrying...");
 			c = NAK;
-			CR (gp_port_write (camera->port, &c, 1));
+			CR (gp_port_write (camera->port, (char *)&c, 1));
 			continue;
 		}
 
@@ -341,7 +341,7 @@ fuji_transmit (Camera *camera, unsigned char *cmd, unsigned int cmd_len,
 
 		/* Acknowledge this packet. */
 		c = ACK;
-		CR (gp_port_write (camera->port, &c, 1));
+		CR (gp_port_write (camera->port, (char *)&c, 1));
 		*buf_len += b_len;
 
 		if (p)
@@ -408,7 +408,7 @@ fuji_pic_name (Camera *camera, unsigned int i, const char **name,
 
 	memset (buf, 0, sizeof (buf));
 	CR (fuji_transmit (camera, cmd, 6, buf, &buf_len, context));
-	*name = buf;
+	*name = (char *)buf;
 
 	return (GP_OK);
 }
@@ -427,7 +427,7 @@ fuji_version (Camera *camera, const char **version, GPContext *context)
 
 	memset (buf, 0, sizeof (buf));
 	CR (fuji_transmit (camera, cmd, 4, buf, &buf_len, context));
-	*version = buf;
+	*version = (char *)buf;
 
 	return (GP_OK);
 }
@@ -446,7 +446,7 @@ fuji_model (Camera *camera, const char **model, GPContext *context)
 
 	memset (buf, 0, sizeof (buf));
 	CR (fuji_transmit (camera, cmd, 4, buf, &buf_len, context));
-	*model = buf;
+	*model = (char *)buf;
 
 	return (GP_OK);
 }
@@ -465,7 +465,7 @@ fuji_id_get (Camera *camera, const char **id, GPContext *context)
 
 	memset (buf, 0, sizeof (buf));
 	CR (fuji_transmit (camera, cmd, 4, buf, &buf_len, context));
-	*id = buf;
+	*id = (char *)buf;
 
 	return (GP_OK);
 }
@@ -643,7 +643,7 @@ fuji_date_set (Camera *camera, FujiDate date, GPContext *context)
 	cmd[1] = FUJI_CMD_DATE_SET;
 	cmd[2] = 14;
 	cmd[3] = 0;
-	sprintf (cmd + 4, "%04d%02d%02d%02d%02d%02d", date.year, date.month,
+	sprintf ((char*)cmd + 4, "%04d%02d%02d%02d%02d%02d", date.year, date.month,
 		 date.day, date.hour, date.min, date.sec);
 
 	CR (fuji_transmit (camera, cmd, 4, buf, &buf_len, context));
@@ -719,7 +719,7 @@ fuji_upload (Camera *camera, const unsigned char *data,
 				(i + CHUNK_SIZE < size) ? 0 : 1, context));
 
 			/* Receive ACK (hopefully) */
-			CR (gp_port_read (camera->port, &c, 1));
+			CR (gp_port_read (camera->port, (char *)&c, 1));
 			switch (c) {
 			case ACK:
 				break;
@@ -795,7 +795,7 @@ fuji_reset (Camera *camera, GPContext *context)
 {
 	unsigned char c = EOT;
 
-	CR (gp_port_write (camera->port, &c, 1));
+	CR (gp_port_write (camera->port, (char *)&c, 1));
 
 	return (GP_OK);
 }

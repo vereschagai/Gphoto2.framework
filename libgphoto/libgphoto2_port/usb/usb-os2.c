@@ -1,7 +1,7 @@
 /* -*- Mode: C; indent-tabs-mode: t; c-basic-offset: 8; tab-width: 8 -*- */
 /* gphoto2-port-usb.c - USB transport functions
 
-   Copyright © 1999-2000 Johannes Erdfelt <johannes@erdfelt.com>
+   Copyright 1999-2000 Johannes Erdfelt <johannes@erdfelt.com>
 
    The GPIO Library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public License as
@@ -62,8 +62,9 @@ gp_port_operations *gp_port_library_operations () {
 
         gp_port_operations *ops;
 
-        ops = (gp_port_operations*)malloc(sizeof(gp_port_operations));
-        memset(ops, 0, sizeof(gp_port_operations));
+        ops = calloc(1, sizeof(gp_port_operations));
+        if (!ops)
+                return NULL;
 
         ops->init   = gp_port_usb_init;
         ops->exit   = gp_port_usb_exit;

@@ -1,9 +1,9 @@
 /****************************************************************/
 /* gsmart300.c - Gphoto2 library for the Mustek gSmart 300      */
 /*                                                              */
-/* Copyright (C) 2002 Jérôme Lodewyck                           */
+/* Copyright (C) 2002 JÃ©rÃ´me Lodewyck                           */
 /*                                                              */
-/* Author: Jérôme Lodewyck <jerome.lodewyck@ens.fr>             */
+/* Author: JÃ©rÃ´me Lodewyck <jerome.lodewyck@ens.fr>             */
 /*                                                              */
 /* based on code by: Till Adam <till@adam-lilienthal.de>        */
 /*                                                              */
@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <gphoto2/gphoto2.h>
 #include "gphoto2-endian.h"
 

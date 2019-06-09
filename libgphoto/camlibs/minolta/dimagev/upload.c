@@ -1,6 +1,6 @@
 /**********************************************************************
 *       Minolta Dimage V digital camera communication library         *
-*               Copyright © 2000,2001 Gus Hartmann                  *
+*               Copyright 2000,2001 Gus Hartmann                      *
 *                                                                     *
 *    This program is free software; you can redistribute it and/or    *
 *    modify it under the terms of the GNU General Public License as   *
@@ -19,7 +19,7 @@
 *                                                                     *
 **********************************************************************/
 
-/* $Id: upload.c 14608 2014-01-01 20:27:33Z marcusmeissner $ */
+/* $Id: upload.c 15027 2014-06-27 05:39:29Z marcusmeissner $ */
 
 #include "config.h"
 
@@ -60,11 +60,11 @@ int dimagev_put_file(dimagev_t* dimagev, CameraFile *file) {
 		return GP_ERROR_NO_MEMORY;
 	}
 
-	if ( gp_port_write(dimagev->dev, p->buffer, p->length) < GP_OK ) {
+	if ( gp_port_write(dimagev->dev, (char *)p->buffer, p->length) < GP_OK ) {
 		GP_DEBUG( "dimagev_put_file::unable to send command packet");
 		free(p);
 		return GP_ERROR_IO;
-	} else if ( gp_port_read(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+	} else if ( gp_port_read(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 		GP_DEBUG( "dimagev_put_file::no response from camera");
 		free(p);
 		return GP_ERROR_IO;
@@ -109,11 +109,11 @@ int dimagev_put_file(dimagev_t* dimagev, CameraFile *file) {
 
 	free(packet_buffer);
 
-	if ( gp_port_write(dimagev->dev, p->buffer, p->length) < GP_OK ) {
+	if ( gp_port_write(dimagev->dev, (char *)p->buffer, p->length) < GP_OK ) {
 		GP_DEBUG( "dimagev_put_file::unable to send data packet");
 		free(p);
 		return GP_ERROR_IO;
-	} else if ( gp_port_read(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+	} else if ( gp_port_read(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 		GP_DEBUG( "dimagev_put_file::no response from camera");
 		free(p);
 		return GP_ERROR_IO;
@@ -139,24 +139,26 @@ int dimagev_put_file(dimagev_t* dimagev, CameraFile *file) {
 
 	for ( sent_packets = (unsigned char) 1 ; sent_packets < total_packets ; sent_packets++ ) {
 		if ( left_to_send > 993 ) {
-			if ( ( p = dimagev_make_packet(&(data[(sent_packets * 993) - 1]), 993, sent_packets) ) == NULL ) {
+			if ( ( p = dimagev_make_packet((unsigned char *)&(data[(sent_packets * 993) - 1]),
+						       993, sent_packets) ) == NULL ) {
 				GP_DEBUG( "dimagev_put_file::unable to allocate data packet");
 				free(p);
 				return GP_ERROR_NO_MEMORY;
 			}
 			left_to_send-=993;
 		} else {
-			if ( ( p = dimagev_make_packet(&(data[((sent_packets * 993) - 1)]), left_to_send, sent_packets) ) == NULL ) {
+			if ( ( p = dimagev_make_packet((unsigned char *)&(data[((sent_packets * 993) - 1)]),
+						       left_to_send, sent_packets) ) == NULL ) {
 				GP_DEBUG( "dimagev_put_file::unable to allocate data packet");
 				return GP_ERROR_NO_MEMORY;
 			}
 		}
 
-		if ( gp_port_write(dimagev->dev, p->buffer, p->length) < GP_OK ) {
+		if ( gp_port_write(dimagev->dev, (char *)p->buffer, p->length) < GP_OK ) {
 			GP_DEBUG( "dimagev_put_file::unable to send data packet");
 			free(p);
 			return GP_ERROR_IO;
-		} else if ( gp_port_read(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+		} else if ( gp_port_read(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 			GP_DEBUG( "dimagev_put_file::no response from camera");
 			free(p);
 			return GP_ERROR_IO;

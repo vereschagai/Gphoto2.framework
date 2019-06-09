@@ -22,7 +22,7 @@
 #include "config.h"
 
 #include <stdio.h>
-#ifdef HAVE_ICONV
+#if defined(HAVE_ICONV) && defined(HAVE_LANGINFO_H)
 #include <iconv.h>
 #endif
 
@@ -94,7 +94,7 @@ typedef int16_t st2205_lookup_row[8];
 
 struct _CameraPrivateLibrary {
 	/* Used by library.c glue code */
-#ifdef HAVE_ICONV
+#if defined(HAVE_ICONV) && defined(HAVE_LANGINFO_H)
 	iconv_t	cd;
 #endif
 	st2205_filename filenames[ST2205_MAX_NO_FILES];
@@ -116,12 +116,15 @@ struct _CameraPrivateLibrary {
 	int no_fats;
 	int block_is_present[2097152 / ST2205_BLOCK_SIZE];
 	int block_dirty[2097152 / ST2205_BLOCK_SIZE];
-	st2205_lookup_row lookup[3][256];
 	struct st2205_coord shuffle[8][ST2205_SHUFFLE_SIZE];
 	int no_shuffles;
 	unsigned char unknown3[8];
 	unsigned int rand_seed;
 };
+
+/* tables in st2205_tables.c */
+extern const st2205_lookup_row st2205_lookup[3][256];
+extern const uint8_t st2205_shuffle_data[10360];
 
 /* functions in st2205.c */
 int

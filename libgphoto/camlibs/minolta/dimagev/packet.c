@@ -1,6 +1,6 @@
 /**********************************************************************
 *       Minolta Dimage V digital camera communication library         *
-*               Copyright © 2000,2001 Gus Hartmann                  *
+*               Copyright 2000,2001 Gus Hartmann                      *
 *                                                                     *
 *    This program is free software; you can redistribute it and/or    *
 *    modify it under the terms of the GNU General Public License as   *
@@ -19,7 +19,7 @@
 *                                                                     *
 **********************************************************************/
 
-/* $Id: packet.c 14651 2014-01-06 11:16:28Z marcusmeissner $ */
+/* $Id: packet.c 15027 2014-06-27 05:39:29Z marcusmeissner $ */
 
 #include "config.h"
 
@@ -109,13 +109,13 @@ dimagev_packet *dimagev_read_packet(dimagev_t *dimagev) {
 		return NULL;
 	}
 
-	if ( gp_port_read(dimagev->dev, p->buffer, 4) < GP_OK ) {
+	if ( gp_port_read(dimagev->dev, (char *)p->buffer, 4) < GP_OK ) {
 		GP_DEBUG( "dimagev_read_packet::unable to read packet header - will try to send NAK");
 		free(p);
 
 		/* Send a NAK */
 		char_buffer = DIMAGEV_NAK;
-		if ( gp_port_write(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+		if ( gp_port_write(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 			GP_DEBUG( "dimagev_read_packet::unable to send NAK");
 			return NULL;
 		}
@@ -127,13 +127,13 @@ dimagev_packet *dimagev_read_packet(dimagev_t *dimagev) {
 
 	p->length = ( p->buffer[2] * 256 ) + ( p->buffer[3] );
 
-	if ( gp_port_read(dimagev->dev, &(p->buffer[4]), ( p->length - 4)) < GP_OK ) {
+	if ( gp_port_read(dimagev->dev, (char *)&(p->buffer[4]), ( p->length - 4)) < GP_OK ) {
 		GP_DEBUG( "dimagev_read_packet::unable to read packet body - will try to send NAK");
 		free(p);
 
 		/* Send a NAK */
 		char_buffer = DIMAGEV_NAK;
-		if ( gp_port_write(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+		if ( gp_port_write(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 			GP_DEBUG( "dimagev_read_packet::unable to send NAK");
 			return NULL;
 		}
@@ -150,7 +150,7 @@ dimagev_packet *dimagev_read_packet(dimagev_t *dimagev) {
 		
 		/* Send a NAK */
 		char_buffer = DIMAGEV_NAK;
-		if ( gp_port_write(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+		if ( gp_port_write(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 			GP_DEBUG( "dimagev_read_packet::unable to send NAK");
 			return NULL;
 		}

@@ -1,5 +1,5 @@
 /*
-* Copyright © 2000-2001, Brian Beattie <beattie@aracnet.com>, et. al.
+* Copyright 2000-2001, Brian Beattie <beattie@aracnet.com>, et. al.
 *
 *	This software was created with the help of proprietary
 *      information belonging to StarDot Technologies
@@ -17,7 +17,7 @@
 *		* Add checksum to mesa_read_row()			  GDB
 *		* Add return with number of bytes to mesa_read_image()	  GDB
 *									  GDB
-* $Id: mesalib.c 9330 2006-10-14 11:54:47Z hun $
+* $Id: mesalib.c 15027 2014-06-27 05:39:29Z marcusmeissner $
 */
 #include "config.h"
 
@@ -106,7 +106,7 @@ mesa_flush( GPPort *port, int timeout )
 
 	/* Wait for silence */
 	do {
-		if ( gp_port_read( port, b, sizeof( b ) ) > 0 )
+		if ( gp_port_read( port, (char *)b, sizeof( b ) ) > 0 )
 			/* reset timer */
 			gettimeofday( &start, NULL );
 		gettimeofday( &now, NULL );
@@ -128,7 +128,7 @@ mesa_read( GPPort *port, uint8_t *b, int s, int timeout2, int timeout1 )
 	do
 	{
 		/* limit reads to 1k segment */
-		r = gp_port_read( port, &b[n], s>1024?1024:s );
+		r = gp_port_read( port, (char *)&b[n], s>1024?1024:s );
 		if ( r > 0 )
 		{
 			n += r;
@@ -147,7 +147,7 @@ mesa_send_command( GPPort *port, uint8_t *cmd, int n, int ackTimeout )
 {
 	uint8_t	c;
 
-	CHECK (gp_port_write( port, cmd, n ));
+	CHECK (gp_port_write( port, (char *)cmd, n ));
 
 	if ( mesa_read( port, &c, 1, ackTimeout, 0 ) != 1 )
 	{
@@ -659,7 +659,7 @@ mesa_modem_check( GPPort *port )
 	b[1] = 'T';
 	b[2] = '\r';
 
-	CHECK (gp_port_write( port, b, sizeof( b ) ));
+	CHECK (gp_port_write( port, (char *)b, sizeof( b ) ));
 
 	/* Expect at least one byte */
 	if ( mesa_read( port, b, 1, 5, 0 ) < 1 )

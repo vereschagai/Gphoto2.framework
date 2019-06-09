@@ -228,9 +228,9 @@ static unsigned char *digita_file_get(Camera *camera, const char *folder,
 	strcpy(fn.dosname, filename);
 
 	/* How much data we're willing to accept */
-	tag.offset = htonl(0);
-	tag.length = htonl(GFD_BUFSIZE);
-	tag.filesize = htonl(0);
+	tag.offset = htobe32(0);
+	tag.length = htobe32(GFD_BUFSIZE);
+	tag.filesize = htobe32(0);
 
 	buflen = GFD_BUFSIZE;
 	data = malloc(buflen);
@@ -246,7 +246,7 @@ static unsigned char *digita_file_get(Camera *camera, const char *folder,
 		return NULL;
 	}
 
-	buflen = ntohl(tag.filesize);
+	buflen = be32toh(tag.filesize);
 	if (thumbnail)
 		buflen += 16;
 
@@ -256,24 +256,24 @@ static unsigned char *digita_file_get(Camera *camera, const char *folder,
 		return NULL;
 	}
 
-	len = ntohl(tag.filesize);
-	pos = ntohl(tag.length);
+	len = be32toh(tag.filesize);
+	pos = be32toh(tag.length);
 	id = gp_context_progress_start (context, len, _("Getting file..."));
 	while (pos < len) {
 		gp_context_progress_update (context, id, pos);
 
-		tag.offset = htonl(pos);
+		tag.offset = htobe32(pos);
 		if ((len - pos) > GFD_BUFSIZE)
-			tag.length = htonl(GFD_BUFSIZE);
+			tag.length = htobe32(GFD_BUFSIZE);
 		else
-			tag.length = htonl(len - pos);
+			tag.length = htobe32(len - pos);
 
 		if (digita_get_file_data(camera->pl, thumbnail, &fn, &tag, data + pos) < 0) {
 			GP_DEBUG ("digita_get_file_data failed.");
 			free (data);
 			return NULL;
 		}
-		pos += ntohl(tag.length);
+		pos += be32toh(tag.length);
 	}
 	gp_context_progress_stop (context, id);
 
@@ -351,9 +351,9 @@ static int get_file_func(CameraFilesystem *fs, const char *folder,
 		char *ppm;
 
 		memcpy((void *)&height, data + 4, 4);
-		height = ntohl(height);
+		height = be32toh(height);
 		memcpy((void *)&width, data + 8, 4);
-		width = ntohl(width);
+		width = be32toh(width);
 
 		GP_DEBUG( "picture size %dx%d", width, height);
 		GP_DEBUG( "data size %d", buflen - 16);

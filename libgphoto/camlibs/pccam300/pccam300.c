@@ -58,24 +58,23 @@
 static int
 pccam300_wait_for_status (GPPort *port)
 {
-	int ret;
 	int retries = 20;
 	unsigned char status = 1;
 
 	while (status != 0x00 && retries--) {
 		gp_port_set_timeout (port, 3000);
-		ret = gp_port_usb_msg_read (port, 0x06, 0x00, 0x00, &status, 1);
+		CHECK(gp_port_usb_msg_read (port, 0x06, 0x00, 0x00, (char *)&status, 1));
 		if (status == 0 || status == 8)
 			return GP_OK;
 		if (status == 0xb0) {
 			gp_port_set_timeout (port, 200000);
-			ret = gp_port_usb_msg_read (port, 0x06, 0x00, 0x00,
-						    &status, 1);
+			CHECK(gp_port_usb_msg_read (port, 0x06, 0x00, 0x00,
+						    (char *)&status, 1));
 		}
 		if (status == 0x40) {
 			gp_port_set_timeout (port, 400000);
-			ret = gp_port_usb_msg_read (port, 0x06, 0x00, 0x00,
-						    &status, 1);
+			CHECK(gp_port_usb_msg_read (port, 0x06, 0x00, 0x00,
+						    (char *)&status, 1));
 		}
 	}
 	return GP_ERROR;
@@ -107,7 +106,8 @@ pccam300_get_filecount (GPPort *port, int *filecount)
 	uint8_t response;
 
 	gp_port_set_timeout (port, 400000);
-	CHECK (gp_port_usb_msg_read (port, 0x08, 0x00, 0x00, &response, 0x01));
+	CHECK (gp_port_usb_msg_read (port, 0x08, 0x00, 0x00,
+				     (char *)&response, 0x01));
 	*filecount = response;
 	return GP_OK;
 }
@@ -120,7 +120,8 @@ pccam300_get_filesize (GPPort *port, unsigned int index,
 	uint16_t i = index;
 
 	gp_port_set_timeout (port, 400000);
-	CHECK (gp_port_usb_msg_read (port, 0x08, i, 0x0001, response, 0x03));
+	CHECK (gp_port_usb_msg_read (port, 0x08, i, 0x0001,
+				     (char *)response, 0x03));
 	*filesize = (response[0] & 0xff)
 		+ (response[1] & 0xff) * 0x100 + (response[2] & 0xff) * 0x10000;
 
@@ -132,13 +133,14 @@ pccam300_get_mem_info (GPPort *port, GPContext *context, int *totalmem,
                        int *freemem)
 {
 	unsigned char response[4];
-	int ret;
 
 	gp_port_set_timeout (port, 400000);
-	ret = gp_port_usb_msg_read (port, 0x60, 0x00, 0x02, response, 0x04);
+	CHECK (gp_port_usb_msg_read (port, 0x60, 0x00, 0x02,
+				     (char *)response, 0x04));
 	*totalmem = response[2] * 65536 + response[1] * 256 + response[0];
 	CHECK (pccam300_wait_for_status (port));
-	ret = gp_port_usb_msg_read (port, 0x60, 0x00, 0x03, response, 0x04);
+	CHECK (gp_port_usb_msg_read (port, 0x60, 0x00, 0x03,
+				     (char *)response, 0x04));
 	*freemem = response[2] * 65536 + response[1] * 256 + response[0];
 	CHECK (pccam300_wait_for_status (port));
 	return GP_OK;
@@ -150,7 +152,8 @@ pccam300_get_file (GPPort *port, GPContext *context, int index,
                    unsigned char **data, unsigned int *size,
                    unsigned int *type)
 {
-	int data_size, r;
+	unsigned int data_size;
+	int r;
 	uint8_t *buf = NULL;
 
 	/* This is somewhat strange, but works, and the win driver does the
@@ -168,7 +171,7 @@ pccam300_get_file (GPPort *port, GPContext *context, int index,
 
 	/* Read the data into the buffer overlapping the header area by
 	 * 0x200 bytes. */
-	r = gp_port_read (port, buf + 623 - 0x200, data_size);
+	r = gp_port_read (port, (char *)buf + 623 - 0x200, data_size);
 	if (r < GP_OK) {
 		free (buf);
 		return r;
@@ -189,8 +192,12 @@ pccam300_get_file (GPPort *port, GPContext *context, int index,
 		/* offset 0x8 in the downloaded data contains the identifier
 		 * we need to request the correct header.
 		 */
-		CHECK(gp_port_usb_msg_read(port, 0x0b, buf[623 - 0x200 + 8],
-		                           0x3, buf, 623));
+		r = gp_port_usb_msg_read(port, 0x0b, buf[623 - 0x200 + 8],
+		                         0x3, (char *)buf, 623);
+		if (r < GP_OK) {
+			free (buf);
+			return r;
+		}
 		*type = PCCAM300_MIME_JPEG;
 	}
 	*data = buf;

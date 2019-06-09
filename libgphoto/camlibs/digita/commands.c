@@ -45,9 +45,9 @@ static void build_command(struct digita_command *cmd, int length, short command)
 
 	/* Length is the sizeof the digita_command minus the length */
 	/*  parameter, plus whatever other data we send */
-	cmd->length = htonl(sizeof(struct digita_command) -
+	cmd->length = htobe32(sizeof(struct digita_command) -
 		sizeof(unsigned int) + length);
-	cmd->command = htons(command);
+	cmd->command = htobe16(command);
 }
 
 struct storage_status {
@@ -80,11 +80,11 @@ int digita_get_storage_status(CameraPrivateLibrary *dev, int *taken,
 	}
 
 	if (taken)
-		*taken = ntohl(ss.takencount);
+		*taken = be32toh(ss.takencount);
 	if (available)
-		*available = ntohl(ss.availablecount);
+		*available = be32toh(ss.availablecount);
 	if (rawcount)
-		*rawcount = ntohl(ss.rawcount);
+		*rawcount = be32toh(ss.rawcount);
 
 	return 0;
 }
@@ -110,7 +110,7 @@ int digita_get_file_list(CameraPrivateLibrary *dev)
 	}
 
 	build_command(&gfl.cmd, sizeof(gfl) - sizeof(gfl.cmd), DIGITA_GET_FILE_LIST);
-	gfl.listorder = htonl(1);
+	gfl.listorder = htobe32(1);
 
 	ret = dev->send(dev, (void *)&gfl, sizeof(gfl));
 	if (ret < 0) {
@@ -158,7 +158,7 @@ int digita_get_file_data(CameraPrivateLibrary *dev, int thumbnail,
 
 	memcpy(&gfds.fn, filename, sizeof(gfds.fn));
 	memcpy(&gfds.tag, tag, sizeof(gfds.tag));
-	gfds.dataselector = htonl(thumbnail);
+	gfds.dataselector = htobe32(thumbnail);
 
 	tbuf = malloc(GFD_BUFSIZE + sizeof(*gfdr));
 	if (!tbuf) {
@@ -187,7 +187,7 @@ int digita_get_file_data(CameraPrivateLibrary *dev, int thumbnail,
 		return gfdr->cmd.result;
 	}
 
-	memcpy(buffer, tbuf + sizeof(*gfdr), ntohl(gfdr->tag.length) + (thumbnail ? 16 : 0));
+	memcpy(buffer, tbuf + sizeof(*gfdr), be32toh(gfdr->tag.length) + (thumbnail ? 16 : 0));
 	memcpy(tag, &gfdr->tag, sizeof(*tag));
 
 	free(tbuf);

@@ -28,12 +28,12 @@
 #include <stdlib.h>
 #include <time.h>
 #include <fcntl.h>
-#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #ifdef HAVE_LIBGD
 #include <gd.h>
 #endif
+#include <unistd.h>
 
 #include <gphoto2/gphoto2-result.h>
 #include "tp6801.h"

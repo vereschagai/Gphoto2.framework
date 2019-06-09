@@ -1,3 +1,23 @@
+/* library.c
+ *
+ * Copyright (C) 2000,2001,2002 donn morrison - dmorriso@gulf.uvic.ca
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA  02110-1301  USA
+ */
+
 /****************************************************
  * kodak dc3200 digital camera driver library       *
  * for gphoto2                                      *
@@ -16,7 +36,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#include <termios.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
@@ -199,7 +218,6 @@ int dc3200_get_data(Camera *camera, unsigned char **data, unsigned long *data_le
 	unsigned char ack[ACK_PACKET_LEN], resp[DEF_PACKET_LEN];
 	int ack_len = ACK_PACKET_LEN, resp_len = DEF_PACKET_LEN;
 	unsigned long num_left = 0;
-	unsigned long total = 0;
 	int data_start_pos = 0;
 	unsigned char *ptr_data = NULL;
 	unsigned int pid = 0;
@@ -371,7 +389,6 @@ int dc3200_get_data(Camera *camera, unsigned char **data, unsigned long *data_le
 			/* get the total list length from the data header */
 			*data_len = bytes_to_l(resp[34], resp[35], resp[36], resp[37]);
 			num_left = bytes_to_l(resp[12], resp[13], resp[14], resp[15]);
-			total = num_left;
 			data_start_pos = 39;
 			*data_len -= 1;
 
@@ -479,16 +496,13 @@ int dc3200_cancel_get_data(Camera *camera)
 		0x00, 0x00, 0x00, 0x06, 0x04, 0x01, 0x00, 0x01, 0, 0};
 	unsigned char ack[ACK_PACKET_LEN], resp[DEF_PACKET_LEN];
 	int ack_len = ACK_PACKET_LEN, resp_len = DEF_PACKET_LEN;
-	struct timeval timeout;
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 1000;
 
 	pkt[1] = dc3200_calc_seqnum(camera);
 	pkt[18] = (camera->pl->cmd_seqnum >> 8) & 0xff;
 	pkt[19] = camera->pl->cmd_seqnum & 0xff;
 
 	/* wait a bit ... */
-	select(0, 0, 0, 0, &timeout);
+	sleep(1);
 
 	/* clear the buffer */
 	dc3200_clear_read_buffer(camera);
@@ -639,7 +653,7 @@ int dc3200_send_packet(Camera *camera, unsigned char *data, int data_len)
 #ifdef DEBUG
 	dump_buffer(buff, buff_len, "s", 16);
 #endif
-	res = gp_port_write(camera->port, buff, data_len + 3);
+	res = gp_port_write(camera->port, (char *)buff, data_len + 3);
 	free(buff);
 	return res;
 }
@@ -671,7 +685,7 @@ int dc3200_recv_packet(Camera *camera, unsigned char *data, int *data_len)
 	 *
 	 */
 
-	res = gp_port_read(camera->port, &buff[num_read], 1);
+	res = gp_port_read(camera->port, (char *)&buff[num_read], 1);
 
 	while(res >= 0 && fails < READ_RETRIES) {
 		if(res == 0) {
@@ -691,7 +705,7 @@ int dc3200_recv_packet(Camera *camera, unsigned char *data, int *data_len)
 				break;
 			}
 		}
-		res = gp_port_read(camera->port, &buff[num_read], 1);
+		res = gp_port_read(camera->port, (char *)&buff[num_read], 1);
 	}
 
 	if(!complete) {
@@ -704,6 +718,7 @@ int dc3200_recv_packet(Camera *camera, unsigned char *data, int *data_len)
 #endif
 
 	if(dc3200_process_packet(camera, buff, &num_read) == GP_ERROR) {
+		free(buff);
 		return GP_ERROR;
 	}
 
@@ -945,7 +960,7 @@ int dc3200_clear_read_buffer(Camera *camera)
 
 	gp_port_set_timeout(camera->port, 0);
 
-	while(gp_port_read(camera->port, &byte, 1) > 0)
+	while(gp_port_read(camera->port, (char *)&byte, 1) > 0)
 		count++;
 
 	if(count > 0)

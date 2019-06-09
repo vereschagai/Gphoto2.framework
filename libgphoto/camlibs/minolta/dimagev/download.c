@@ -1,6 +1,6 @@
 /**********************************************************************
 *       Minolta Dimage V digital camera communication library         *
-*               Copyright © 2000,2001 Gus Hartmann                  *
+*               Copyright 2000,2001 Gus Hartmann                      *
 *                                                                     *
 *    This program is free software; you can redistribute it and/or    *
 *    modify it under the terms of the GNU General Public License as   *
@@ -19,7 +19,7 @@
 *                                                                     *
 **********************************************************************/
 
-/* $Id: download.c 14608 2014-01-01 20:27:33Z marcusmeissner $ */
+/* $Id: download.c 15027 2014-06-27 05:39:29Z marcusmeissner $ */
 
 #include "config.h"
 
@@ -28,7 +28,7 @@
 #define GP_MODULE "dimagev"
 
 int dimagev_get_picture(dimagev_t *dimagev, int file_number, CameraFile *file) {
-	int length, total_packets, i;
+	int total_packets, i;
 	unsigned long size = 0;
 	dimagev_packet *p, *r;
 	unsigned char char_buffer, command_buffer[3];
@@ -60,11 +60,11 @@ int dimagev_get_picture(dimagev_t *dimagev, int file_number, CameraFile *file) {
 		return GP_ERROR_NO_MEMORY;
 	}
 
-	if ( gp_port_write(dimagev->dev, p->buffer, p->length) < GP_OK ) {
+	if ( gp_port_write(dimagev->dev, (char *)p->buffer, p->length) < GP_OK ) {
 		GP_DEBUG( "dimagev_get_picture::unable to send set_data packet");
 		free(p);
 		return GP_ERROR_IO;
-	} else if ( gp_port_read(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+	} else if ( gp_port_read(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 		GP_DEBUG( "dimagev_get_picture::no response from camera");
 		free(p);
 		return GP_ERROR_IO;
@@ -101,7 +101,6 @@ int dimagev_get_picture(dimagev_t *dimagev, int file_number, CameraFile *file) {
 	free(p);
 
 	total_packets = (int) r->buffer[0];
-	length = ( r->length - 1 );
 
 	/* Allocate an extra byte just in case. */
 	if ( ( data = malloc((size_t)((993 * total_packets) + 1)) ) == NULL ) {
@@ -117,7 +116,7 @@ int dimagev_get_picture(dimagev_t *dimagev, int file_number, CameraFile *file) {
 
 	for ( i = 0 ; i < ( total_packets -1 ) ; i++ ) {
 		char_buffer=DIMAGEV_ACK;
-		if ( gp_port_write(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+		if ( gp_port_write(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 			GP_DEBUG( "dimagev_get_picture::unable to send ACK");
 			free(data);
 			return GP_ERROR_IO;
@@ -131,7 +130,7 @@ int dimagev_get_picture(dimagev_t *dimagev, int file_number, CameraFile *file) {
 
 			GP_DEBUG( "dimagev_get_picture::sending NAK to get retry");
 			char_buffer=DIMAGEV_NAK;
-			if ( gp_port_write(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+			if ( gp_port_write(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 				GP_DEBUG( "dimagev_get_picture::unable to send NAK");
 				free(data);
 				return GP_ERROR_IO;
@@ -162,13 +161,13 @@ int dimagev_get_picture(dimagev_t *dimagev, int file_number, CameraFile *file) {
 	size++;
 
 	char_buffer=DIMAGEV_EOT;
-	if ( gp_port_write(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+	if ( gp_port_write(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 		GP_DEBUG( "dimagev_get_picture::unable to send ACK");
 		free(data);
 		return GP_ERROR_IO;
 	}
 
-	if ( gp_port_read(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+	if ( gp_port_read(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 		GP_DEBUG( "dimagev_get_picture::no response from camera");
 		free(data);
 		return GP_ERROR_IO;
@@ -192,8 +191,8 @@ int dimagev_get_picture(dimagev_t *dimagev, int file_number, CameraFile *file) {
 	}
 
 #ifdef _gphoto_exif_
-	exifdat.header = data;
-	exifdat.data = data + 12 ;
+	exifdat.header = (unsigned char *)data;
+	exifdat.data = (unsigned char *)data + 12 ;
 
 	if ( gpi_exif_stat(&exifdat) != 0 ) {
 		GP_DEBUG( "dimagev_get_picture::unable to stat EXIF tags");
@@ -235,11 +234,11 @@ int dimagev_get_thumbnail(dimagev_t *dimagev, int file_number, CameraFile *file)
 		return GP_ERROR_NO_MEMORY;
 	}
 
-	if ( gp_port_write(dimagev->dev, p->buffer, p->length) < GP_OK ) {
+	if ( gp_port_write(dimagev->dev, (char *)p->buffer, p->length) < GP_OK ) {
 		GP_DEBUG( "dimagev_get_thumbnail::unable to send set_data packet");
 		free(p);
 		return GP_ERROR_IO;
-	} else if ( gp_port_read(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+	} else if ( gp_port_read(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 		GP_DEBUG( "dimagev_get_thumbnail::no response from camera");
 		free(p);
 		return GP_ERROR_IO;
@@ -292,7 +291,7 @@ int dimagev_get_thumbnail(dimagev_t *dimagev, int file_number, CameraFile *file)
 	while ( size < 9599 ) {
 
 		char_buffer=DIMAGEV_ACK;
-		if ( gp_port_write(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+		if ( gp_port_write(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 			GP_DEBUG( "dimagev_get_thumbnail::unable to send ACK");
 			free(ycrcb_data);
 			return GP_ERROR_IO;
@@ -324,13 +323,13 @@ int dimagev_get_thumbnail(dimagev_t *dimagev, int file_number, CameraFile *file)
 	size++;
 
 	char_buffer=DIMAGEV_EOT;
-	if ( gp_port_write(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+	if ( gp_port_write(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 		GP_DEBUG( "dimagev_get_thumbnail::unable to send ACK");
 		free(ycrcb_data);
 		return GP_ERROR_IO;
 	}
 
-	if ( gp_port_read(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+	if ( gp_port_read(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 		GP_DEBUG( "dimagev_get_thumbnail::no response from camera");
 		free(ycrcb_data);
 		return GP_ERROR_IO;
@@ -353,7 +352,7 @@ int dimagev_get_thumbnail(dimagev_t *dimagev, int file_number, CameraFile *file)
 			return GP_ERROR_IO;
 	}
 
-	data = dimagev_ycbcr_to_ppm(ycrcb_data);
+	data = (char *)dimagev_ycbcr_to_ppm(ycrcb_data);
 	size = 14413;
 
 	gp_file_set_data_and_size (file, data, size);

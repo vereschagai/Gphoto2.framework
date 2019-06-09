@@ -1,9 +1,9 @@
 /*
-        $Id: dc.c 12305 2009-07-30 18:15:21Z dfandrich $
+        $Id: dc.c 15027 2014-06-27 05:39:29Z marcusmeissner $
 
-        Copyright © 2000 Mariusz Zynel <mariusz@mizar.org> (gPhoto port)
-        Copyright © 2000 Fredrik Roubert <roubert@df.lth.se> (idea)
-        Copyright © 1999 Galen Brooks <galen@nine.com> (DC1580 code)
+        Copyright 2000 Mariusz Zynel <mariusz@mizar.org> (gPhoto port)
+        Copyright 2000 Fredrik Roubert <roubert@df.lth.se> (idea)
+        Copyright 1999 Galen Brooks <galen@nine.com> (DC1580 code)
 
         This file is part of the gPhoto project and may only be used,  modified,
         and distributed under the terms of the gPhoto project license,  COPYING.

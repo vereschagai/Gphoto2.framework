@@ -1,6 +1,6 @@
 /**********************************************************************
 *       Minolta Dimage V digital camera communication library         *
-*               Copyright © 2000,2001 Gus Hartmann                  *
+*               Copyright 2000,2001 Gus Hartmann                      *
 *                                                                     *
 *    This program is free software; you can redistribute it and/or    *
 *    modify it under the terms of the GNU General Public License as   *
@@ -19,7 +19,7 @@
 *                                                                     *
 **********************************************************************/
 
-/* $Id: capture.c 14608 2014-01-01 20:27:33Z marcusmeissner $ */
+/* $Id: capture.c 15027 2014-06-27 05:39:29Z marcusmeissner $ */
 
 #include "config.h"
 
@@ -71,7 +71,7 @@ int dimagev_shutter(dimagev_t *dimagev) {
 		return GP_ERROR_NO_MEMORY;
 	}
 
-	if ( gp_port_write(dimagev->dev, p->buffer, p->length) < GP_OK ) {
+	if ( gp_port_write(dimagev->dev, (char *)p->buffer, p->length) < GP_OK ) {
 		GP_DEBUG( "dimagev_shutter::unable to write packet");
 		
 		if ( p != NULL ) {
@@ -90,7 +90,7 @@ int dimagev_shutter(dimagev_t *dimagev) {
 		GP_DEBUG( "dimagev_shutter::sleep() returned non-zero value");
 	}
 	
-	if ( gp_port_read(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+	if ( gp_port_read(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 		GP_DEBUG( "dimagev_shutter::no response from camera");
 		return GP_ERROR_IO;
 	}
@@ -144,12 +144,12 @@ int dimagev_shutter(dimagev_t *dimagev) {
 	}
 
 	char_buffer = DIMAGEV_EOT;
-	if ( gp_port_write(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+	if ( gp_port_write(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 		GP_DEBUG( "dimagev_shutter::unable to send EOT");
 		return GP_ERROR_IO;
 	}
 		
-	if ( gp_port_read(dimagev->dev, &char_buffer, 1) < GP_OK ) {
+	if ( gp_port_read(dimagev->dev, (char *)&char_buffer, 1) < GP_OK ) {
 		GP_DEBUG( "dimagev_shutter::no response from camera");
 		return GP_ERROR_IO;
 	}

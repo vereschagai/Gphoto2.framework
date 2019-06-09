@@ -1,6 +1,6 @@
 /* Sony DSC-F55 & MSAC-SR1 - gPhoto2 camera library
- * Copyright © 2001, 2002, 2004 Raymond Penners <raymond@dotsphinx.com>
- * Copyright © 2000 Mark Davies <mdavies@dial.pipex.com>
+ * Copyright 2001, 2002, 2004 Raymond Penners <raymond@dotsphinx.com>
+ * Copyright 2000 Mark Davies <mdavies@dial.pipex.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <gphoto2/gphoto2.h>
 #include "sony.h"
@@ -157,7 +158,7 @@ sony_baud_to_id(long baud)
 static int
 sony_read_byte(Camera * camera, unsigned char *b)
 {
-	int n = gp_port_read(camera->port, b, 1);
+	int n = gp_port_read(camera->port, (char *)b, 1);
 	if (n != 1)
 		return GP_ERROR;
 	else
@@ -316,7 +317,7 @@ sony_packet_write(Camera * camera, Packet * p)
 	 **/
 	usleep(10000);
 
-	rc = gp_port_write(camera->port, &START_PACKET, 1);
+	rc = gp_port_write(camera->port, (char *)&START_PACKET, 1);
 
 	p->buffer[p->length] = p->checksum;
 

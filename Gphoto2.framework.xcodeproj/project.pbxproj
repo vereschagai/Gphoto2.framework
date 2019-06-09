@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2C24599722AD9F7000555294 /* chdk.c in Sources */ = {isa = PBXBuildFile; fileRef = 2C24599422AD9F7000555294 /* chdk.c */; };
 		90A6666C1818295900592E25 /* gphoto2-abilities-list.h in Headers */ = {isa = PBXBuildFile; fileRef = 90A6657C1818286E00592E25 /* gphoto2-abilities-list.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		90A6666D1818295900592E25 /* gphoto2-camera.h in Headers */ = {isa = PBXBuildFile; fileRef = 90A6657D1818286E00592E25 /* gphoto2-camera.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		90A6666E1818295900592E25 /* gphoto2-context.h in Headers */ = {isa = PBXBuildFile; fileRef = 90A6657E1818286E00592E25 /* gphoto2-context.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -262,6 +263,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		2C24599422AD9F7000555294 /* chdk.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = chdk.c; sourceTree = "<group>"; };
+		2C24599522AD9F7000555294 /* chdk_ptp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = chdk_ptp.h; sourceTree = "<group>"; };
+		2C24599622AD9F7000555294 /* chdk_live_view.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = chdk_live_view.h; sourceTree = "<group>"; };
 		90A6632F1818286D00592E25 /* adc65.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = adc65.c; sourceTree = "<group>"; };
 		90A663301818286D00592E25 /* Changelog */ = {isa = PBXFileReference; lastKnownFileType = text; path = Changelog; sourceTree = "<group>"; };
 		90A663311818286D00592E25 /* Makefile-files */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Makefile-files"; sourceTree = "<group>"; };
@@ -1717,6 +1721,9 @@
 		90A664B01818286D00592E25 /* ptp2 */ = {
 			isa = PBXGroup;
 			children = (
+				2C24599622AD9F7000555294 /* chdk_live_view.h */,
+				2C24599522AD9F7000555294 /* chdk_ptp.h */,
+				2C24599422AD9F7000555294 /* chdk.c */,
 				90A664B11818286D00592E25 /* ChangeLog */,
 				90A664B21818286D00592E25 /* config.c */,
 				90A664B31818286D00592E25 /* device-flags.h */,
@@ -2602,6 +2609,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = 90B828171817D43B0029357C;
@@ -2708,6 +2716,7 @@
 			files = (
 				90A667161818505600592E25 /* config.c in Sources */,
 				90A667181818505600592E25 /* library.c in Sources */,
+				2C24599722AD9F7000555294 /* chdk.c in Sources */,
 				90A6671A1818505600592E25 /* olympus-wrap.c in Sources */,
 				90A6671F1818505600592E25 /* ptp.c in Sources */,
 				90A667211818505600592E25 /* ptpip.c in Sources */,
@@ -3526,6 +3535,7 @@
 				90A6666B1818291A00592E25 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		90A666BC18182C0600592E25 /* Build configuration list for PBXNativeTarget "libgphoto2_port" */ = {
 			isa = XCConfigurationList;
@@ -3534,6 +3544,7 @@
 				90A666BE18182C0600592E25 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		90A666DD181846DA00592E25 /* Build configuration list for PBXNativeTarget "usb" */ = {
 			isa = XCConfigurationList;
@@ -3542,6 +3553,7 @@
 				90A666DF181846DA00592E25 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		90A666EE18184CBB00592E25 /* Build configuration list for PBXNativeTarget "libgphoto2" */ = {
 			isa = XCConfigurationList;
@@ -3550,6 +3562,7 @@
 				90A666F018184CBB00592E25 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		90A667131818500300592E25 /* Build configuration list for PBXNativeTarget "ptp2" */ = {
 			isa = XCConfigurationList;
@@ -3567,6 +3580,7 @@
 				90ADD95D181B023E0083A15F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		90B8281B1817D43B0029357C /* Build configuration list for PBXProject "Gphoto2.framework" */ = {
 			isa = XCConfigurationList;

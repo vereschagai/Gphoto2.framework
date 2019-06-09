@@ -1,6 +1,6 @@
 /*
  * Jenoptik JD11 Camera Driver
- * Copyright © 1999-2001 Marcus Meissner <marcus@jet.franken.de>
+ * Copyright 1999-2001 Marcus Meissner <marcus@jet.franken.de>
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -148,6 +148,8 @@ picture_decomp_v1(unsigned char *compressed,unsigned char *uncompressed,int widt
 			*uncompressed++=xbyte;
 		}
 	}
+	free (lastline);
+	free (line);
 }
 
 /* Just blow up the picture from 6 bit uncompressed to 8 bit uncompressed */

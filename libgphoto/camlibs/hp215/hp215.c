@@ -257,7 +257,7 @@ hp_rcv_ack (Camera *cam, char *ackval)
 static int
 decode_u32(unsigned char **msg, int *msglen, unsigned int *val) {
 	unsigned int x = 0,i;
-
+	*val = 0;
 	for (i=0;i<8;i++) {
 		if (!*msglen)
 			return GP_ERROR;
@@ -273,7 +273,7 @@ decode_u32(unsigned char **msg, int *msglen, unsigned int *val) {
 static int
 decode_u16(unsigned char **msg, int *msglen, unsigned short *val) {
 	unsigned int x = 0,i;
-
+	*val = 0;
 	for (i=0;i<4;i++) {
 		if (!*msglen)
 			return GP_ERROR;
@@ -371,8 +371,7 @@ hp_send_command_and_receive_blob(
 		memcpy (*msg, msgbuf+5, replydatalen-2);
 	}
 	gp_log (GP_LOG_DEBUG, "hp215", "Read Blob: retcode is %04x", *retcode);
-	gp_log (GP_LOG_DEBUG, "hp215", "Read Blob: argument block is:");
-	gp_log_data ("hp215", (char*)*msg, *msglen);
+	GP_LOG_DATA ((char*)*msg, *msglen, "Read Blob: argument block is:");
 	return GP_OK;
 }
 

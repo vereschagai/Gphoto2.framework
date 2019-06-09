@@ -1,6 +1,6 @@
 /* web2.c
  *
- * Copyright © 2002 Marcus Meissner <marcus@jet.franken.de>
+ * Copyright 2002 Marcus Meissner <marcus@jet.franken.de>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -146,11 +146,9 @@ web2_getthumb(GPPort *port, GPContext *context, CameraFile *file)
 static int
 web2_get_file_info(GPPort *port, GPContext *context, char *name, int *filesize) {
     unsigned char cmdbuf[26];
-    int i, hmm, ret;
+    int i, ret;
     ret = web2_command(port, 0, WEB2_GET_DIRENTRY, 0, 0, (char*)cmdbuf, 26);
 
-    /* 0 usually? */
-    hmm = cmdbuf[0]  | (cmdbuf[1] << 8);
     /* flip filename bytes to be in correct order */
     for (i=2;i<16;i++)
 	name[i-2] = cmdbuf[i^1];

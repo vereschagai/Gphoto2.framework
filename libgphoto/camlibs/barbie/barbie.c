@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <bayer.h>
+#include <unistd.h>
 #include <gphoto2/gphoto2.h>
 
 #ifdef ENABLE_NLS
@@ -92,7 +93,7 @@ int barbie_exchange (GPPort *port, unsigned char *cmd, unsigned int cmd_size, un
 		if (resp[RESPONSE_BYTE] != '!')
 			return (1);
 		/* if busy, sleep 2 seconds */
-		GP_SYSTEM_SLEEP(2000);
+		sleep(2);
 	}
 	return (0);
 }

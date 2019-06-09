@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 2.5.  */
+/* A Bison parser, made by GNU Bison 2.7.  */
 
 /* Bison implementation for Yacc-like parsers in C
    
-      Copyright (C) 1984, 1989-1990, 2000-2011 Free Software Foundation, Inc.
+      Copyright (C) 1984, 1989-1990, 2000-2012 Free Software Foundation, Inc.
    
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@
 #define YYBISON 1
 
 /* Bison version.  */
-#define YYBISON_VERSION "2.5"
+#define YYBISON_VERSION "2.7"
 
 /* Skeleton name.  */
 #define YYSKELETON_NAME "yacc.c"
@@ -58,14 +58,11 @@
 /* Pull parsers.  */
 #define YYPULL 1
 
-/* Using locations.  */
-#define YYLSP_NEEDED 1
 
 
 
 /* Copy the first part of user declarations.  */
-
-/* Line 268 of yacc.c  */
+/* Line 371 of yacc.c  */
 #line 23 "ddb-txt.y"
 
 #include <stdio.h>
@@ -106,14 +103,16 @@ compare_camera_abilities(const CameraAbilities *a,
 
 
 
+/* Line 371 of yacc.c  */
+#line 108 "ddb-txt.tab.c"
 
-/* Line 268 of yacc.c  */
-#line 112 "ddb-txt.tab.c"
-
-/* Enabling traces.  */
-#ifndef YYDEBUG
-# define YYDEBUG 0
-#endif
+# ifndef YY_NULL
+#  if defined __cplusplus && 201103L <= __cplusplus
+#   define YY_NULL nullptr
+#  else
+#   define YY_NULL 0
+#  endif
+# endif
 
 /* Enabling verbose error messages.  */
 #ifdef YYERROR_VERBOSE
@@ -123,11 +122,17 @@ compare_camera_abilities(const CameraAbilities *a,
 # define YYERROR_VERBOSE 1
 #endif
 
-/* Enabling the token table.  */
-#ifndef YYTOKEN_TABLE
-# define YYTOKEN_TABLE 0
+/* In a future release of Bison, this section will be replaced
+   by #include "ddb-txt.tab.h".  */
+#ifndef YY_YY_DDB_TXT_TAB_H_INCLUDED
+# define YY_YY_DDB_TXT_TAB_H_INCLUDED
+/* Enabling traces.  */
+#ifndef YYDEBUG
+# define YYDEBUG 0
 #endif
-
+#if YYDEBUG
+extern int yydebug;
+#endif
 
 /* Tokens.  */
 #ifndef YYTOKENTYPE
@@ -168,7 +173,6 @@ compare_camera_abilities(const CameraAbilities *a,
 #endif
 
 
-
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
@@ -188,12 +192,28 @@ typedef struct YYLTYPE
 # define YYLTYPE_IS_TRIVIAL 1
 #endif
 
+extern YYSTYPE yylval;
+extern YYLTYPE yylloc;
+#ifdef YYPARSE_PARAM
+#if defined __STDC__ || defined __cplusplus
+int yyparse (void *YYPARSE_PARAM);
+#else
+int yyparse ();
+#endif
+#else /* ! YYPARSE_PARAM */
+#if defined __STDC__ || defined __cplusplus
+int yyparse (char const *file_name, CameraAbilitiesList *al);
+#else
+int yyparse ();
+#endif
+#endif /* ! YYPARSE_PARAM */
+
+#endif /* !YY_YY_DDB_TXT_TAB_H_INCLUDED  */
 
 /* Copy the second part of user declarations.  */
 
-
-/* Line 343 of yacc.c  */
-#line 197 "ddb-txt.tab.c"
+/* Line 390 of yacc.c  */
+#line 217 "ddb-txt.tab.c"
 
 #ifdef short
 # undef short
@@ -246,24 +266,24 @@ typedef short int yytype_int16;
 # if defined YYENABLE_NLS && YYENABLE_NLS
 #  if ENABLE_NLS
 #   include <libintl.h> /* INFRINGES ON USER NAME SPACE */
-#   define YY_(msgid) dgettext ("bison-runtime", msgid)
+#   define YY_(Msgid) dgettext ("bison-runtime", Msgid)
 #  endif
 # endif
 # ifndef YY_
-#  define YY_(msgid) msgid
+#  define YY_(Msgid) Msgid
 # endif
 #endif
 
 /* Suppress unused-variable warnings by "using" E.  */
 #if ! defined lint || defined __GNUC__
-# define YYUSE(e) ((void) (e))
+# define YYUSE(E) ((void) (E))
 #else
-# define YYUSE(e) /* empty */
+# define YYUSE(E) /* empty */
 #endif
 
 /* Identity function, used to suppress warnings about constant conditions.  */
 #ifndef lint
-# define YYID(n) (n)
+# define YYID(N) (N)
 #else
 #if (defined __STDC__ || defined __C99__FUNC__ \
      || defined __cplusplus || defined _MSC_VER)
@@ -299,6 +319,7 @@ YYID (yyi)
 #    if ! defined _ALLOCA_H && ! defined EXIT_SUCCESS && (defined __STDC__ || defined __C99__FUNC__ \
      || defined __cplusplus || defined _MSC_VER)
 #     include <stdlib.h> /* INFRINGES ON USER NAME SPACE */
+      /* Use EXIT_SUCCESS as a witness for stdlib.h.  */
 #     ifndef EXIT_SUCCESS
 #      define EXIT_SUCCESS 0
 #     endif
@@ -392,20 +413,20 @@ union yyalloc
 #endif
 
 #if defined YYCOPY_NEEDED && YYCOPY_NEEDED
-/* Copy COUNT objects from FROM to TO.  The source and destination do
+/* Copy COUNT objects from SRC to DST.  The source and destination do
    not overlap.  */
 # ifndef YYCOPY
 #  if defined __GNUC__ && 1 < __GNUC__
-#   define YYCOPY(To, From, Count) \
-      __builtin_memcpy (To, From, (Count) * sizeof (*(From)))
+#   define YYCOPY(Dst, Src, Count) \
+      __builtin_memcpy (Dst, Src, (Count) * sizeof (*(Src)))
 #  else
-#   define YYCOPY(To, From, Count)		\
-      do					\
-	{					\
-	  YYSIZE_T yyi;				\
-	  for (yyi = 0; yyi < (Count); yyi++)	\
-	    (To)[yyi] = (From)[yyi];		\
-	}					\
+#   define YYCOPY(Dst, Src, Count)              \
+      do                                        \
+        {                                       \
+          YYSIZE_T yyi;                         \
+          for (yyi = 0; yyi < (Count); yyi++)   \
+            (Dst)[yyi] = (Src)[yyi];            \
+        }                                       \
       while (YYID (0))
 #  endif
 # endif
@@ -516,7 +537,7 @@ static const yytype_uint16 yyrline[] =
 };
 #endif
 
-#if YYDEBUG || YYERROR_VERBOSE || YYTOKEN_TABLE
+#if YYDEBUG || YYERROR_VERBOSE || 1
 /* YYTNAME[SYMBOL-NUM] -- String name of the symbol SYMBOL-NUM.
    First, the terminals, then, starting at YYNTOKENS, nonterminals.  */
 static const char *const yytname[] =
@@ -539,7 +560,7 @@ static const char *const yytname[] =
   "interface_usb_internal", "interface_usb_vendprod_optional",
   "interface_usb_vendor", "interface_usb_product",
   "interface_usb_class_optional", "$@5", "interface_usb_subclass_optional",
-  "$@6", "interface_usb_protocol_optional", 0
+  "$@6", "interface_usb_protocol_optional", YY_NULL
 };
 #endif
 
@@ -649,10 +670,10 @@ static const yytype_uint8 yytable[] =
        0,     0,     0,     0,     0,     0,    34
 };
 
-#define yypact_value_is_default(yystate) \
-  ((yystate) == (-25))
+#define yypact_value_is_default(Yystate) \
+  (!!((Yystate) == (-25)))
 
-#define yytable_value_is_error(yytable_value) \
+#define yytable_value_is_error(Yytable_value) \
   YYID (0)
 
 static const yytype_int8 yycheck[] =
@@ -711,23 +732,24 @@ static const yytype_uint8 yystos[] =
 
 #define YYRECOVERING()  (!!yyerrstatus)
 
-#define YYBACKUP(Token, Value)					\
-do								\
-  if (yychar == YYEMPTY && yylen == 1)				\
-    {								\
-      yychar = (Token);						\
-      yylval = (Value);						\
-      YYPOPSTACK (1);						\
-      goto yybackup;						\
-    }								\
-  else								\
-    {								\
+#define YYBACKUP(Token, Value)                                  \
+do                                                              \
+  if (yychar == YYEMPTY)                                        \
+    {                                                           \
+      yychar = (Token);                                         \
+      yylval = (Value);                                         \
+      YYPOPSTACK (yylen);                                       \
+      yystate = *yyssp;                                         \
+      goto yybackup;                                            \
+    }                                                           \
+  else                                                          \
+    {                                                           \
       yyerror (file_name, al, YY_("syntax error: cannot back up")); \
       YYERROR;							\
     }								\
 while (YYID (0))
 
-
+/* Error token number */
 #define YYTERROR	1
 #define YYERRCODE	256
 
@@ -736,26 +758,27 @@ while (YYID (0))
    If N is 0, then set CURRENT to the empty location which ends
    the previous symbol: RHS[0] (always defined).  */
 
-#define YYRHSLOC(Rhs, K) ((Rhs)[K])
 #ifndef YYLLOC_DEFAULT
-# define YYLLOC_DEFAULT(Current, Rhs, N)				\
-    do									\
-      if (YYID (N))                                                    \
-	{								\
-	  (Current).first_line   = YYRHSLOC (Rhs, 1).first_line;	\
-	  (Current).first_column = YYRHSLOC (Rhs, 1).first_column;	\
-	  (Current).last_line    = YYRHSLOC (Rhs, N).last_line;		\
-	  (Current).last_column  = YYRHSLOC (Rhs, N).last_column;	\
-	}								\
-      else								\
-	{								\
-	  (Current).first_line   = (Current).last_line   =		\
-	    YYRHSLOC (Rhs, 0).last_line;				\
-	  (Current).first_column = (Current).last_column =		\
-	    YYRHSLOC (Rhs, 0).last_column;				\
-	}								\
+# define YYLLOC_DEFAULT(Current, Rhs, N)                                \
+    do                                                                  \
+      if (YYID (N))                                                     \
+        {                                                               \
+          (Current).first_line   = YYRHSLOC (Rhs, 1).first_line;        \
+          (Current).first_column = YYRHSLOC (Rhs, 1).first_column;      \
+          (Current).last_line    = YYRHSLOC (Rhs, N).last_line;         \
+          (Current).last_column  = YYRHSLOC (Rhs, N).last_column;       \
+        }                                                               \
+      else                                                              \
+        {                                                               \
+          (Current).first_line   = (Current).last_line   =              \
+            YYRHSLOC (Rhs, 0).last_line;                                \
+          (Current).first_column = (Current).last_column =              \
+            YYRHSLOC (Rhs, 0).last_column;                              \
+        }                                                               \
     while (YYID (0))
 #endif
+
+#define YYRHSLOC(Rhs, K) ((Rhs)[K])
 
 
 /* YY_LOCATION_PRINT -- Print the location on the stream.
@@ -764,10 +787,46 @@ while (YYID (0))
 
 #ifndef YY_LOCATION_PRINT
 # if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
-#  define YY_LOCATION_PRINT(File, Loc)			\
-     fprintf (File, "%d.%d-%d.%d",			\
-	      (Loc).first_line, (Loc).first_column,	\
-	      (Loc).last_line,  (Loc).last_column)
+
+/* Print *YYLOCP on YYO.  Private, do not rely on its existence. */
+
+__attribute__((__unused__))
+#if (defined __STDC__ || defined __C99__FUNC__ \
+     || defined __cplusplus || defined _MSC_VER)
+static unsigned
+yy_location_print_ (FILE *yyo, YYLTYPE const * const yylocp)
+#else
+static unsigned
+yy_location_print_ (yyo, yylocp)
+    FILE *yyo;
+    YYLTYPE const * const yylocp;
+#endif
+{
+  unsigned res = 0;
+  int end_col = 0 != yylocp->last_column ? yylocp->last_column - 1 : 0;
+  if (0 <= yylocp->first_line)
+    {
+      res += fprintf (yyo, "%d", yylocp->first_line);
+      if (0 <= yylocp->first_column)
+        res += fprintf (yyo, ".%d", yylocp->first_column);
+    }
+  if (0 <= yylocp->last_line)
+    {
+      if (yylocp->first_line < yylocp->last_line)
+        {
+          res += fprintf (yyo, "-%d", yylocp->last_line);
+          if (0 <= end_col)
+            res += fprintf (yyo, ".%d", end_col);
+        }
+      else if (0 <= end_col && yylocp->first_column < end_col)
+        res += fprintf (yyo, "-%d", end_col);
+    }
+  return res;
+ }
+
+#  define YY_LOCATION_PRINT(File, Loc)          \
+  yy_location_print_ (File, &(Loc))
+
 # else
 #  define YY_LOCATION_PRINT(File, Loc) ((void) 0)
 # endif
@@ -775,7 +834,6 @@ while (YYID (0))
 
 
 /* YYLEX -- calling `yylex' with the right arguments.  */
-
 #ifdef YYLEX_PARAM
 # define YYLEX yylex (YYLEX_PARAM)
 #else
@@ -828,6 +886,8 @@ yy_symbol_value_print (yyoutput, yytype, yyvaluep, yylocationp, file_name, al)
     CameraAbilitiesList *al;
 #endif
 {
+  FILE *yyo = yyoutput;
+  YYUSE (yyo);
   if (!yyvaluep)
     return;
   YYUSE (yylocationp);
@@ -842,7 +902,7 @@ yy_symbol_value_print (yyoutput, yytype, yyvaluep, yylocationp, file_name, al)
   switch (yytype)
     {
       default:
-	break;
+        break;
     }
 }
 
@@ -1090,12 +1150,11 @@ static int
 yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
                 yytype_int16 *yyssp, int yytoken)
 {
-  YYSIZE_T yysize0 = yytnamerr (0, yytname[yytoken]);
+  YYSIZE_T yysize0 = yytnamerr (YY_NULL, yytname[yytoken]);
   YYSIZE_T yysize = yysize0;
-  YYSIZE_T yysize1;
   enum { YYERROR_VERBOSE_ARGS_MAXIMUM = 5 };
   /* Internationalized format string. */
-  const char *yyformat = 0;
+  const char *yyformat = YY_NULL;
   /* Arguments of yyformat. */
   char const *yyarg[YYERROR_VERBOSE_ARGS_MAXIMUM];
   /* Number of reported tokens (one for the "unexpected", one per
@@ -1155,11 +1214,13 @@ yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
                     break;
                   }
                 yyarg[yycount++] = yytname[yyx];
-                yysize1 = yysize + yytnamerr (0, yytname[yyx]);
-                if (! (yysize <= yysize1
-                       && yysize1 <= YYSTACK_ALLOC_MAXIMUM))
-                  return 2;
-                yysize = yysize1;
+                {
+                  YYSIZE_T yysize1 = yysize + yytnamerr (YY_NULL, yytname[yyx]);
+                  if (! (yysize <= yysize1
+                         && yysize1 <= YYSTACK_ALLOC_MAXIMUM))
+                    return 2;
+                  yysize = yysize1;
+                }
               }
         }
     }
@@ -1179,10 +1240,12 @@ yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
 # undef YYCASE_
     }
 
-  yysize1 = yysize + yystrlen (yyformat);
-  if (! (yysize <= yysize1 && yysize1 <= YYSTACK_ALLOC_MAXIMUM))
-    return 2;
-  yysize = yysize1;
+  {
+    YYSIZE_T yysize1 = yysize + yystrlen (yyformat);
+    if (! (yysize <= yysize1 && yysize1 <= YYSTACK_ALLOC_MAXIMUM))
+      return 2;
+    yysize = yysize1;
+  }
 
   if (*yymsg_alloc < yysize)
     {
@@ -1248,35 +1311,35 @@ yydestruct (yymsg, yytype, yyvaluep, yylocationp, file_name, al)
     {
 
       default:
-	break;
+        break;
     }
 }
 
 
-/* Prevent warnings from -Wmissing-prototypes.  */
-#ifdef YYPARSE_PARAM
-#if defined __STDC__ || defined __cplusplus
-int yyparse (void *YYPARSE_PARAM);
-#else
-int yyparse ();
-#endif
-#else /* ! YYPARSE_PARAM */
-#if defined __STDC__ || defined __cplusplus
-int yyparse (char const *file_name, CameraAbilitiesList *al);
-#else
-int yyparse ();
-#endif
-#endif /* ! YYPARSE_PARAM */
 
 
 /* The lookahead symbol.  */
 int yychar;
 
+
+#ifndef YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
+# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
+# define YY_IGNORE_MAYBE_UNINITIALIZED_END
+#endif
+#ifndef YY_INITIAL_VALUE
+# define YY_INITIAL_VALUE(Value) /* Nothing. */
+#endif
+
 /* The semantic value of the lookahead symbol.  */
-YYSTYPE yylval;
+YYSTYPE yylval YY_INITIAL_VALUE(yyval_default);
 
 /* Location data for the lookahead symbol.  */
-YYLTYPE yylloc;
+YYLTYPE yylloc
+# if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
+  = { 1, 1, 1, 1 }
+# endif
+;
+
 
 /* Number of syntax errors so far.  */
 int yynerrs;
@@ -1318,7 +1381,7 @@ yyparse (file_name, al)
        `yyvs': related to semantic values.
        `yyls': related to locations.
 
-       Refer to the stacks thru separate pointers, to allow yyoverflow
+       Refer to the stacks through separate pointers, to allow yyoverflow
        to reallocate them elsewhere.  */
 
     /* The state stack.  */
@@ -1344,7 +1407,7 @@ yyparse (file_name, al)
   int yyn;
   int yyresult;
   /* Lookahead token as an internal (translated) token number.  */
-  int yytoken;
+  int yytoken = 0;
   /* The variables used to return semantic value and location from the
      action routines.  */
   YYSTYPE yyval;
@@ -1363,10 +1426,9 @@ yyparse (file_name, al)
      Keep to zero when no symbol should be popped.  */
   int yylen = 0;
 
-  yytoken = 0;
-  yyss = yyssa;
-  yyvs = yyvsa;
-  yyls = yylsa;
+  yyssp = yyss = yyssa;
+  yyvsp = yyvs = yyvsa;
+  yylsp = yyls = yylsa;
   yystacksize = YYINITDEPTH;
 
   YYDPRINTF ((stderr, "Starting parse\n"));
@@ -1376,23 +1438,8 @@ yyparse (file_name, al)
   yynerrs = 0;
   yychar = YYEMPTY; /* Cause a token to be read.  */
 
-  /* Initialize stack pointers.
-     Waste one element of value and location stack
-     so that they stay on the same level as the state stack.
-     The wasted elements are never initialized.  */
-  yyssp = yyss;
-  yyvsp = yyvs;
-  yylsp = yyls;
-
-#if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
-  /* Initialize the default location before parsing starts.  */
-  yylloc.first_line   = yylloc.last_line   = 1;
-  yylloc.first_column = yylloc.last_column = 1;
-#endif
-
 /* User initialization code.  */
-
-/* Line 1590 of yacc.c  */
+/* Line 1575 of yacc.c  */
 #line 83 "ddb-txt.y"
 {
   lexer_reset(file_name);
@@ -1402,11 +1449,9 @@ yyparse (file_name, al)
   yylloc.begin.filename = yylloc.end.filename = file_name;
   error_string = NULL;
 }
-
-/* Line 1590 of yacc.c  */
-#line 1408 "ddb-txt.tab.c"
+/* Line 1575 of yacc.c  */
+#line 1454 "ddb-txt.tab.c"
   yylsp[0] = yylloc;
-
   goto yysetstate;
 
 /*------------------------------------------------------------.
@@ -1552,7 +1597,9 @@ yybackup:
   yychar = YYEMPTY;
 
   yystate = yyn;
+  YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
   *++yyvsp = yylval;
+  YY_IGNORE_MAYBE_UNINITIALIZED_END
   *++yylsp = yylloc;
   goto yynewstate;
 
@@ -1590,8 +1637,7 @@ yyreduce:
   switch (yyn)
     {
         case 4:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 142 "ddb-txt.y"
     {
 	  current_device_name = alloc_parse_string((yyvsp[(2) - (3)].str_val));
@@ -1603,8 +1649,7 @@ yyreduce:
     break;
 
   case 5:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 158 "ddb-txt.y"
     {
 	  //printf("END_DEVICE <<%s>>\n", current_device_name);
@@ -1617,8 +1662,7 @@ yyreduce:
     break;
 
   case 14:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 189 "ddb-txt.y"
     {
 	  if (gpi_string_to_enum((yyvsp[(2) - (3)].str_val), &ca.device_type,
@@ -1631,8 +1675,7 @@ yyreduce:
     break;
 
   case 15:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 201 "ddb-txt.y"
     {
 	  const char *camlib_env = getenv(CAMLIBDIR_ENV);
@@ -1647,8 +1690,7 @@ yyreduce:
     break;
 
   case 17:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 216 "ddb-txt.y"
     {
 	  if (gpi_string_to_enum((yyvsp[(2) - (3)].str_val), &ca.status,
@@ -1661,8 +1703,7 @@ yyreduce:
     break;
 
   case 30:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 258 "ddb-txt.y"
     {
 	  if (gpi_string_or_to_flags((yyvsp[(1) - (1)].str_val), &ca.folder_operations,
@@ -1675,8 +1716,7 @@ yyreduce:
     break;
 
   case 31:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 270 "ddb-txt.y"
     {
 	  if (gpi_string_or_to_flags((yyvsp[(1) - (1)].str_val), &ca.file_operations,
@@ -1689,8 +1729,7 @@ yyreduce:
     break;
 
   case 32:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 282 "ddb-txt.y"
     {
 	  if (gpi_string_or_to_flags((yyvsp[(1) - (1)].str_val),
@@ -1704,8 +1743,7 @@ yyreduce:
     break;
 
   case 37:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 301 "ddb-txt.y"
     {
 	  ca.port |= GP_PORT_DISK;
@@ -1713,8 +1751,7 @@ yyreduce:
     break;
 
   case 38:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 304 "ddb-txt.y"
     {
 	  ca.port |= GP_PORT_PTPIP;
@@ -1722,8 +1759,7 @@ yyreduce:
     break;
 
   case 39:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 311 "ddb-txt.y"
     {
 	  ca.port |= GP_PORT_SERIAL;
@@ -1732,8 +1768,7 @@ yyreduce:
     break;
 
   case 40:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 318 "ddb-txt.y"
     {
 	  /* Ideally: Add serial entry to database. */
@@ -1741,8 +1776,7 @@ yyreduce:
     break;
 
   case 42:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 326 "ddb-txt.y"
     {
 	  if (speed_index < (sizeof(ca.speed)/sizeof(ca.speed[0]))) {
@@ -1754,8 +1788,7 @@ yyreduce:
     break;
 
   case 45:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 342 "ddb-txt.y"
     {
 	  if (speed_index < (sizeof(ca.speed)/sizeof(ca.speed[0]))) {
@@ -1765,8 +1798,7 @@ yyreduce:
     break;
 
   case 46:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 356 "ddb-txt.y"
     {
 	  ca.port |= GP_PORT_USB;
@@ -1775,8 +1807,7 @@ yyreduce:
     break;
 
   case 47:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 362 "ddb-txt.y"
     {
 	  /* Ideally: Commit prepared USB entry to database */
@@ -1784,8 +1815,7 @@ yyreduce:
     break;
 
   case 51:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 380 "ddb-txt.y"
     {
 	  ca.usb_vendor = (yyvsp[(2) - (3)].ui_val);
@@ -1793,8 +1823,7 @@ yyreduce:
     break;
 
   case 52:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 387 "ddb-txt.y"
     {
 	  ca.usb_product = (yyvsp[(2) - (3)].ui_val);
@@ -1802,8 +1831,7 @@ yyreduce:
     break;
 
   case 54:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 395 "ddb-txt.y"
     {
 	  ca.usb_class = (yyvsp[(2) - (3)].ui_val);
@@ -1811,8 +1839,7 @@ yyreduce:
     break;
 
   case 57:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 404 "ddb-txt.y"
     {
 	  ca.usb_subclass = (yyvsp[(2) - (3)].ui_val);
@@ -1820,8 +1847,7 @@ yyreduce:
     break;
 
   case 60:
-
-/* Line 1806 of yacc.c  */
+/* Line 1792 of yacc.c  */
 #line 413 "ddb-txt.y"
     {
 	  ca.usb_protocol = (yyvsp[(2) - (3)].ui_val);
@@ -1829,9 +1855,8 @@ yyreduce:
     break;
 
 
-
-/* Line 1806 of yacc.c  */
-#line 1835 "ddb-txt.tab.c"
+/* Line 1792 of yacc.c  */
+#line 1860 "ddb-txt.tab.c"
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -1996,7 +2021,9 @@ yyerrlab1:
       YY_STACK_PRINT (yyss, yyssp);
     }
 
+  YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
   *++yyvsp = yylval;
+  YY_IGNORE_MAYBE_UNINITIALIZED_END
 
   yyerror_range[2] = yylloc;
   /* Using YYLLOC is tempting, but would change the location of
@@ -2025,7 +2052,7 @@ yyabortlab:
   yyresult = 1;
   goto yyreturn;
 
-#if !defined(yyoverflow) || YYERROR_VERBOSE
+#if !defined yyoverflow || YYERROR_VERBOSE
 /*-------------------------------------------------.
 | yyexhaustedlab -- memory exhaustion comes here.  |
 `-------------------------------------------------*/
@@ -2067,8 +2094,7 @@ yyreturn:
 }
 
 
-
-/* Line 2067 of yacc.c  */
+/* Line 2055 of yacc.c  */
 #line 418 "ddb-txt.y"
 
 
@@ -2120,4 +2146,3 @@ reset_ca(void)
   ca.usb_subclass = -1;
   ca.usb_protocol = -1;
 }
-

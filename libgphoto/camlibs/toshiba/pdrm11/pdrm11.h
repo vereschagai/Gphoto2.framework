@@ -1,6 +1,6 @@
 /* pdrm11.h -- interfaces directly with the camera
  *
- * Copyright © 2003 David Hogue <david@jawa.gotdns.org>
+ * Copyright 2003 David Hogue <david@jawa.gotdns.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -34,7 +34,7 @@
 	if (res < 0) { \
 		res = result; \
 		if (res < 0) { \
-			GP_DEBUG("%s--%d: %s returned 0x%x", __FILE__, __LINE__, __STRING(result), res); \
+			GP_DEBUG("%s--%d: %s returned 0x%x", __FILE__, __LINE__, #result, res); \
 			return res; \
 		} \
 	} \
@@ -46,7 +46,7 @@
 	if (res < 0) { \
 		res = result; \
 		if (res < 0) { \
-			GP_DEBUG("%s--%d: %s returned 0x%x", __FILE__, __LINE__, __STRING(result), res); \
+			GP_DEBUG("%s--%d: %s returned 0x%x", __FILE__, __LINE__, #result, res); \
 			free (buf); \
 			return res; \
 		} \

@@ -50,8 +50,6 @@
 #include <gphoto2/gphoto2-result.h>
 #include <gphoto2/gphoto2-port-log.h>
 
-#define GP_MODULE "ahd_bayer"
-
 #define MAX(x,y) ((x < y) ? (y) : (x))
 #define MIN(x,y) ((x > y) ? (y) : (x))
 #define CLAMP(x) MAX(MIN(x,0xff),0)
@@ -427,48 +425,19 @@ int gp_ahd_interpolate (unsigned char *image, int w, int h, BayerTile tile)
 	unsigned char *homo_ch, *homo_cv;
 
 	window_h = calloc (w * 18, 1);
-	if (!window_h) {
-		GP_DEBUG("Out of memory\n");
-		return GP_ERROR_NO_MEMORY;
-	}
-	window_v = calloc(w * 18, 1);
-	if (!window_v) {
-		free (window_h);
-		GP_DEBUG("Out of memory\n");
-		return GP_ERROR_NO_MEMORY;
-	}
-	homo_h = calloc(w*3, 1);
-	if (!homo_h) {
-		free (window_v);
-		free (window_h);
-		GP_DEBUG("Out of memory\n");
-		return GP_ERROR_NO_MEMORY;
-	}
-	homo_v = calloc(w*3, 1);
-	if (!homo_v) {
-		free (window_v);
-		free (window_h);
-		free (homo_h);
-		GP_DEBUG("Out of memory\n");
-		return GP_ERROR_NO_MEMORY;
-	}
+	window_v = calloc (w * 18, 1);
+	homo_h = calloc (w*3, 1);
+	homo_v = calloc (w*3, 1);
 	homo_ch = calloc (w, 1);
-	if (!homo_ch) {
-		free (window_v);
-		free (window_h);
-		free (homo_h);
-		free (homo_v);
-		GP_DEBUG("Out of memory\n");
-		return GP_ERROR_NO_MEMORY;
-	}
 	homo_cv = calloc (w, 1);
-	if (!homo_cv) {
-		free (window_v);
+	if (!window_h || !window_v || !homo_h || !homo_v || !homo_ch || !homo_cv) {
 		free (window_h);
-		free (homo_ch);
-		free (homo_v);
+		free (window_v);
 		free (homo_h);
-		GP_DEBUG("Out of memory\n");
+		free (homo_v);
+		free (homo_ch);
+		free (homo_cv);
+		GP_LOG_E ("Out of memory");
 		return GP_ERROR_NO_MEMORY;
 	}
 	switch (tile) {

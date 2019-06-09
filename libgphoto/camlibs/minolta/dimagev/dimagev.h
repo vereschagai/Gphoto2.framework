@@ -1,6 +1,6 @@
 /**********************************************************************
 *       Minolta Dimage V digital camera communication library         *
-*               Copyright © 2000,2001 Gus Hartmann                  *
+*               Copyright 2000,2001 Gus Hartmann                      *
 *                                                                     *
 *    This program is free software; you can redistribute it and/or    *
 *    modify it under the terms of the GNU General Public License as   *
@@ -19,7 +19,7 @@
 *                                                                     *
 **********************************************************************/
 
-/* $Id: dimagev.h 14608 2014-01-01 20:27:33Z marcusmeissner $ */
+/* $Id: dimagev.h 15027 2014-06-27 05:39:29Z marcusmeissner $ */
 
 #if defined HAVE_UNISTD_H
 #include <unistd.h>
@@ -47,7 +47,7 @@
 
 #include <exif.h>
 
-#define DIMAGEV_VERSION "$Revision: 14608 $"
+#define DIMAGEV_VERSION "$Revision: 15027 $"
 
 /* These are the repsonse codes. */
 #define DIMAGEV_STX 0x02

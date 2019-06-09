@@ -1,6 +1,6 @@
 /** \file
  *
- * \author Copyright 2001 Lutz Müller <lutz@users.sf.net>
+ * \author Copyright 2001 Lutz Mueller <lutz@users.sf.net>
  *
  * \par License
  * This library is free software; you can redistribute it and/or
@@ -32,7 +32,7 @@
 #ifdef HAVE_REGEX
 #include <regex.h>
 #else
-#error We need regex.h, but it has not been detected.
+#warning We need regex.h, but it has not been detected.
 #endif
 
 #include <ltdl.h>
@@ -75,7 +75,6 @@ struct _GPPortInfoList {
 	unsigned int iolib_count;
 };
 
-#define CHECK_NULL(x) {if (!(x)) return (GP_ERROR_BAD_PARAMETERS);}
 #define CR(x)         {int r=(x);if (r<0) return (r);}
 
 
@@ -109,7 +108,7 @@ gp_port_message_codeset (const char *codeset) {
 int
 gp_port_info_list_new (GPPortInfoList **list)
 {
-	CHECK_NULL (list);
+	C_PARAMS (list);
 
 	/*
 	 * We put this in here because everybody needs to call this function
@@ -117,10 +116,7 @@ gp_port_info_list_new (GPPortInfoList **list)
 	 */
 	bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
 
-	*list = malloc (sizeof (GPPortInfoList));
-	if (!*list)
-		return (GP_ERROR_NO_MEMORY);
-	memset (*list, 0, sizeof (GPPortInfoList));
+	C_MEM (*list = calloc (1, sizeof (GPPortInfoList)));
 
 	return (GP_OK);
 }
@@ -136,7 +132,7 @@ gp_port_info_list_new (GPPortInfoList **list)
 int
 gp_port_info_list_free (GPPortInfoList *list)
 {
-	CHECK_NULL (list);
+	C_PARAMS (list);
 
 	if (list->info) {
 		unsigned int i;
@@ -172,36 +168,25 @@ gp_port_info_list_free (GPPortInfoList *list)
  * against info.path and - if successfull - will append this entry to the 
  * list.
  *
- * \note This returns index - number of generic entries, not the correct index.
- *
- * \return A non-negative number or a gphoto2 error code
+ * \return A gphoto2 error code, or an index into the port list (excluding generic entries).
+ *         which can be used for gp_port_info_list_get_info.
  **/
 int
 gp_port_info_list_append (GPPortInfoList *list, GPPortInfo info)
 {
-	unsigned int generic, i;
-	GPPortInfo *new_info;
+	int generic, i;
 
-	CHECK_NULL (list);
+	C_PARAMS (list);
 
-	if (!list->info)
-		new_info = malloc (sizeof (GPPortInfo));
-	else
-		new_info = realloc (list->info, sizeof (GPPortInfo) *
-							(list->count + 1));
-	if (!new_info)
-		return (GP_ERROR_NO_MEMORY);
-
-	list->info = new_info;
+	C_MEM (list->info = realloc (list->info, sizeof (GPPortInfo) * (list->count + 1)));
 	list->count++;
-
 	list->info[list->count - 1] = info;
 
 	/* Ignore generic entries */
 	for (generic = i = 0; i < list->count; i++)
 		if (!strlen (list->info[i]->name))
 			generic++;
-	return (list->count - 1 - generic);
+        return (list->count - 1 - generic);
 }
 
 
@@ -216,21 +201,18 @@ foreach_func (const char *filename, lt_ptr data)
 	unsigned int j, old_size = list->count;
 	int result;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port-info-list",
-		_("Called for filename '%s'."), filename );
+	GP_LOG_D ("Called for filename '%s'.", filename );
 
 	lh = lt_dlopenext (filename);
 	if (!lh) {
-		gp_log (GP_LOG_DEBUG, "gphoto2-port-info-list",
-			_("Could not load '%s': '%s'."), filename, lt_dlerror ());
+		GP_LOG_D ("Could not load '%s': '%s'.", filename, lt_dlerror ());
 		return (0);
 	}
 
 	lib_type = lt_dlsym (lh, "gp_port_library_type");
 	lib_list = lt_dlsym (lh, "gp_port_library_list");
 	if (!lib_type || !lib_list) {
-		gp_log (GP_LOG_DEBUG, "gphoto2-port-info-list",
-			_("Could not find some functions in '%s': '%s'."),
+		GP_LOG_D ("Could not find some functions in '%s': '%s'.",
 			filename, lt_dlerror ());
 		lt_dlclose (lh);
 		return (0);
@@ -241,18 +223,18 @@ foreach_func (const char *filename, lt_ptr data)
 		if (list->info[j]->type == type)
 			break;
 	if (j != list->count) {
-		gp_log (GP_LOG_DEBUG, "gphoto2-port-info-list",
-			_("'%s' already loaded"), filename);
+		GP_LOG_D ("'%s' already loaded", filename);
 		lt_dlclose (lh);
 		return (0);
 	}
 
 	result = lib_list (list);
+#if !defined(VALGRIND)
 	lt_dlclose (lh);
+#endif
 	if (result < 0) {
-		gp_log (GP_LOG_DEBUG, "gphoto2-port-info-list",
-			_("Could not load port driver list: '%s'."),
-			gp_port_result_as_string (result));
+		GP_LOG_E ("Error during assembling of port list: '%s' (%d).",
+			gp_port_result_as_string (result), result);
 	}
 
 	if (old_size != list->count) {
@@ -263,8 +245,7 @@ foreach_func (const char *filename, lt_ptr data)
 		list->iolib_count++;
 
 		for (j = old_size; j < list->count; j++){
-			gp_log (GP_LOG_DEBUG, "gphoto2-port-info-list",
-				_("Loaded '%s' ('%s') from '%s'."),
+			GP_LOG_D ("Loaded '%s' ('%s') from '%s'.",
 				list->info[j]->name, list->info[j]->path,
 				filename);
 			list->info[j]->library_filename = strdup (filename);
@@ -336,25 +317,17 @@ gp_port_info_list_load (GPPortInfoList *list)
 	const char *iolibs = (iolibs_env != NULL)?iolibs_env:gp_port_iolibs_dir();
 	int result;
 
-	CHECK_NULL (list);
+	C_PARAMS (list);
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port-info-list",
-		_("Using ltdl to load io-drivers from '%s'..."),
-		iolibs);
+	GP_LOG_D ("Using ltdl to load io-drivers from '%s'...", iolibs);
 	lt_dlinit ();
 	lt_dladdsearchdir (iolibs);
 	result = lt_dlforeachfile (iolibs, foreach_func, list);
-    const char *dyld_library_path = getenv("DYLD_LIBRARY_PATH");
-    if (dyld_library_path && result >= 0) {
-        lt_dladdsearchdir(dyld_library_path);
-        result = lt_dlforeachfile (dyld_library_path, foreach_func, list);
-    }
 	lt_dlexit ();
 	if (result < 0)
 		return (result);
 	if (list->iolib_count == 0) {
-		gp_log (GP_LOG_ERROR, "gphoto2-port-info-list",
-                        "No iolibs found in '%s'", iolibs);
+		GP_LOG_E ("No iolibs found in '%s'", iolibs);
 		return GP_ERROR_LIBRARY;
 	}
         return (GP_OK);
@@ -373,14 +346,9 @@ gp_port_info_list_count (GPPortInfoList *list)
 {
 	unsigned int count, i;
 
-	CHECK_NULL (list);
+	C_PARAMS (list);
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port-info-list",
-	ngettext(
-		"Counting entries (%i available)...",
-		"Counting entries (%i available)...",
-		list->count
-		), list->count);
+	GP_LOG_D ("Counting entries (%i available)...", list->count);
 
 	/* Ignore generic entries */
 	count = list->count;
@@ -388,12 +356,7 @@ gp_port_info_list_count (GPPortInfoList *list)
 		if (!strlen (list->info[i]->name))
 			count--;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port-info-list",
-		ngettext(
-			"%i regular entry available.",
-			"%i regular entries available.",
-			count
-		), count);
+	GP_LOG_D ("%i regular entries available.", count);
 	return count;
 }
 
@@ -414,21 +377,18 @@ gp_port_info_list_lookup_path (GPPortInfoList *list, const char *path)
 {
 	unsigned int i;
 	int result, generic;
+#ifdef HAVE_REGEX
 	regex_t pattern;
 #ifdef HAVE_GNU_REGEX
 	const char *rv;
 #else
 	regmatch_t match;
 #endif
+#endif
 
-	CHECK_NULL (list && path);
+	C_PARAMS (list && path);
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port-info-list",
-		ngettext(
-		"Looking for path '%s' (%i entry available)...",
-		"Looking for path '%s' (%i entries available)...",
-		list->count
-		), path, list->count);
+	GP_LOG_D ("Looking for path '%s' (%i entries available)...", path, list->count);
 
 	/* Exact match? */
 	for (generic = i = 0; i < list->count; i++)
@@ -437,17 +397,16 @@ gp_port_info_list_lookup_path (GPPortInfoList *list, const char *path)
 		else if (!strcmp (list->info[i]->path, path))
 			return (i - generic);
 
+#ifdef HAVE_REGEX
 	/* Regex match? */
-	gp_log (GP_LOG_DEBUG, "gphoto2-port-info-list",
-		_("Starting regex search for '%s'..."), path);
+	GP_LOG_D ("Starting regex search for '%s'...", path);
 	for (i = 0; i < list->count; i++) {
 		GPPortInfo newinfo;
 
 		if (strlen (list->info[i]->name))
 			continue;
 
-		gp_log (GP_LOG_DEBUG, "gphoto2-port-info-list",
-			_("Trying '%s'..."), list->info[i]->path);
+		GP_LOG_D ("Trying '%s'...", list->info[i]->path);
 
 		/* Compile the pattern */
 #ifdef HAVE_GNU_REGEX
@@ -455,8 +414,7 @@ gp_port_info_list_lookup_path (GPPortInfoList *list, const char *path)
 		rv = re_compile_pattern (list->info[i]->path,
 					 strlen (list->info[i]->path), &pattern);
 		if (rv) {
-			gp_log (GP_LOG_DEBUG, "gphoto2-port-info-list",
-				"%s", rv);
+			GP_LOG_D ("%s", rv);
 			continue;
 		}
 #else
@@ -464,11 +422,9 @@ gp_port_info_list_lookup_path (GPPortInfoList *list, const char *path)
 		if (result) {
 			char buf[1024];
 			if (regerror (result, &pattern, buf, sizeof (buf)))
-				gp_log (GP_LOG_ERROR, "gphoto2-port-info-list",
-					"%s", buf);
+				GP_LOG_E ("%s", buf);
 			else
-				gp_log (GP_LOG_ERROR, "gphoto2-port-info-list",
-					_("regcomp failed"));
+				GP_LOG_E ("regcomp failed");
 			return (GP_ERROR_UNKNOWN_PORT);
 		}
 #endif
@@ -478,16 +434,14 @@ gp_port_info_list_lookup_path (GPPortInfoList *list, const char *path)
 		result = re_match (&pattern, path, strlen (path), 0, NULL);
 		regfree (&pattern);
 		if (result < 0) {
-			gp_log (GP_LOG_DEBUG, "gphoto2-port-info-list",
-				_("re_match failed (%i)"), result);
+			GP_LOG_D ("re_match failed (%i)", result);
 			continue;
 		}
 #else
 		result = regexec (&pattern, path, 1, &match, 0);
 		regfree (&pattern);
 		if (result) {
-			gp_log (GP_LOG_DEBUG, "gphoto2-port-info-list",
-				_("regexec failed"));
+			GP_LOG_D ("regexec failed");
 			continue;
 		}
 #endif
@@ -499,6 +453,7 @@ gp_port_info_list_lookup_path (GPPortInfoList *list, const char *path)
 		CR (result = gp_port_info_list_append (list, newinfo));
 		return result;
 	}
+#endif /* HAVE_REGEX */
 
 	return (GP_ERROR_UNKNOWN_PORT);
 }
@@ -517,10 +472,9 @@ gp_port_info_list_lookup_name (GPPortInfoList *list, const char *name)
 {
 	unsigned int i, generic;
 
-	CHECK_NULL (list && name);
+	C_PARAMS (list && name);
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port-info-list", _("Looking up entry "
-		"'%s'..."), name);
+	GP_LOG_D ("Looking up entry '%s'...", name);
 
 	/* Ignore generic entries */
 	for (generic = i = 0; i < list->count; i++)
@@ -547,24 +501,17 @@ gp_port_info_list_get_info (GPPortInfoList *list, int n, GPPortInfo *info)
 {
 	int i;
 
-	CHECK_NULL (list && info);
+	C_PARAMS (list && info);
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port-info-list",
-		ngettext(
-		"Getting info of entry %i (%i available)...",
-		"Getting info of entry %i (%i available)...",
-		list->count
-		), n, list->count);
+	GP_LOG_D ("Getting info of entry %i (%i available)...", n, list->count);
 
-	if (n < 0 || n >= list->count)
-		return GP_ERROR_BAD_PARAMETERS;
+	C_PARAMS (n >= 0 && n < list->count);
 
 	/* Ignore generic entries */
 	for (i = 0; i <= n; i++)
 		if (!strlen (list->info[i]->name)) {
 			n++;
-			if (n >= list->count)
-				return GP_ERROR_BAD_PARAMETERS;
+			C_PARAMS (n < list->count);
 		}
 
 	*info = list->info[n];
@@ -599,7 +546,7 @@ gp_port_info_get_name (GPPortInfo info, char **name) {
  **/
 int
 gp_port_info_set_name (GPPortInfo info, const char *name) {
-	info->name = strdup (name);
+	C_MEM (info->name = strdup (name));
 	return GP_OK;
 }
 
@@ -630,7 +577,7 @@ gp_port_info_get_path (GPPortInfo info, char **path) {
  **/
 int
 gp_port_info_set_path (GPPortInfo info, const char *path) {
-	info->path = strdup (path);
+	C_MEM (info->path = strdup (path));
 	return GP_OK;
 }
 
@@ -676,8 +623,6 @@ gp_port_info_set_type (GPPortInfo info, GPPortType type) {
  **/
 int
 gp_port_info_new (GPPortInfo *info) {
-	*info = calloc (sizeof(struct _GPPortInfo),1);
-	if (!*info)
-		return GP_ERROR_NO_MEMORY;
+	C_MEM (*info = calloc (1, sizeof(struct _GPPortInfo)));
 	return GP_OK;
 }

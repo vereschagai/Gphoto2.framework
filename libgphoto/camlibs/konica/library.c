@@ -1,6 +1,6 @@
 /* library.c
  *
- * Copyright © 2001 Lutz Müller
+ * Copyright 2001 Lutz Mueller
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -736,6 +736,7 @@ camera_get_config (Camera* camera, CameraWidget** window, GPContext *context)
                                 gp_widget_add_choice (widget, name);
                 }
                 gp_widget_set_value (widget, _("None selected"));
+                gp_system_closedir (d);
         }
 
         /* TV output format */
@@ -1067,8 +1068,6 @@ localization_file_read (Camera *camera, const char *file_name,
         int f;
         unsigned char c[] = "\0\0";
         unsigned long line_number;
-        unsigned char checksum;
-        unsigned long fcs;
         unsigned int d;
         char path[1024];
 
@@ -1135,7 +1134,7 @@ localization_file_read (Camera *camera, const char *file_name,
                         }
                         c[j] = (char) f;
                         if (j == 1) {
-                                if (sscanf (&c[0], "%X", &d) != 1) {
+                                if (sscanf ((char *)&c[0], "%X", &d) != 1) {
 					GP_DEBUG ("Error in localization "
 						  "file.");
                                         return (GP_ERROR_CORRUPTED_DATA);
@@ -1156,13 +1155,11 @@ localization_file_read (Camera *camera, const char *file_name,
         fclose (file);
 
         /* Calculate and check checksum. */
-        checksum = 0;
 	gp_log (GP_LOG_DEBUG, "konica", "Checksum not implemented!");
         /*FIXME: There's a checksum at (*data)[100]. I could not
           figure out how it is calculated. */
 
         /* Calculate and check frame check sequence. */
-        fcs = 0;
 
 	gp_log (GP_LOG_DEBUG, "konica", "Frame check sequence "
 		"not implemented!");

@@ -100,8 +100,7 @@ static int
 gp_port_usbscsi_lock (GPPort *port)
 {
 #if HAVE_FLOCK
-	gp_log (GP_LOG_DEBUG, "gphoto2-port-usbscsi",
-		"Trying to lock '%s'...", port->settings.usbscsi.path);
+	GP_LOG_D ("Trying to lock '%s'...", port->settings.usbscsi.path);
 
 	if (flock(port->pl->fd, LOCK_EX | LOCK_NB) != 0) {
 		switch (errno) {
@@ -118,8 +117,7 @@ gp_port_usbscsi_lock (GPPort *port)
 		}
 	}
 #else
-	gp_log (GP_LOG_DEBUG, "gphoto2-port-usbscsi",
-		"Locking '%s' not possible, flock not availbale.", port->settings.usbscsi.path);
+	GP_LOG_D ("Locking '%s' not possible, flock not availbale.", port->settings.usbscsi.path);
 #endif
 	return GP_OK;
 }
@@ -176,7 +174,7 @@ gp_port_usbscsi_get_usb_id (const char *sg,
 {
 	FILE *f;
 	char c, *s, buf[32], path[PATH_MAX + 1];
-	char *xpath;
+	const char *xpath;
 
 	snprintf (path, sizeof (path), "/sys/class/scsi_generic/%s", sg);
 	xpath = gp_port_usbscsi_resolve_symlink(path);
@@ -242,9 +240,7 @@ gp_port_library_list (GPPortInfoList *list)
 static int
 gp_port_usbscsi_init (GPPort *port)
 {
-	port->pl = calloc (1, sizeof (GPPortPrivateLibrary));
-	if (!port->pl)
-		return GP_ERROR_NO_MEMORY;
+	C_MEM (port->pl = calloc (1, sizeof (GPPortPrivateLibrary)));
 
 	port->pl->fd = -1;
 
@@ -254,13 +250,10 @@ gp_port_usbscsi_init (GPPort *port)
 static int
 gp_port_usbscsi_exit (GPPort *port)
 {
-	if (!port)
-		return GP_ERROR_BAD_PARAMETERS;
+	C_PARAMS (port);
 
-	if (port->pl) {
-		free (port->pl);
-		port->pl = NULL;
-	}
+	free (port->pl);
+	port->pl = NULL;
 
 	return GP_OK;
 }
@@ -280,8 +273,7 @@ gp_port_usbscsi_open (GPPort *port)
 
 	result = gp_port_usbscsi_lock (port);
 	for (i = 0; i < max_tries && result == GP_ERROR_IO_LOCK; i++) {
-		gp_log (GP_LOG_DEBUG, "gphoto2-port-usbscsi",
-			"Failed to get a lock, trying again...");
+		GP_LOG_D ("Failed to get a lock, trying again...");
 		sleep (1);
 		result = gp_port_usbscsi_lock (port);
 	}
@@ -318,8 +310,7 @@ static int gp_port_usbscsi_send_scsi_cmd (GPPort *port, int to_dev, char *cmd,
 #ifdef HAVE_SCSI_SG_H
 	sg_io_hdr_t io_hdr;
 
-	if (!port)
-		return GP_ERROR_BAD_PARAMETERS;
+	C_PARAMS (port);
 
 	/* The device needs to be opened for that operation */
 	if (port->pl->fd == -1)
@@ -342,7 +333,7 @@ static int gp_port_usbscsi_send_scsi_cmd (GPPort *port, int to_dev, char *cmd,
 	io_hdr.dxfer_len = data_size;
 	/*io_hdr.timeout = 1500;*/
 	io_hdr.timeout = port->timeout;
-	gp_log (GP_LOG_DEBUG, "port/usbscsi", "setting scsi command timeout to %d", port->timeout);
+	GP_LOG_D ("setting scsi command timeout to %d", port->timeout);
 	if (io_hdr.timeout < 1500)
 		io_hdr.timeout = 1500;
 
@@ -361,8 +352,7 @@ static int gp_port_usbscsi_send_scsi_cmd (GPPort *port, int to_dev, char *cmd,
 static int
 gp_port_usbscsi_update (GPPort *port)
 {
-	if (!port)
-		return GP_ERROR_BAD_PARAMETERS;
+	C_PARAMS (port);
 
 	memcpy (&port->settings, &port->settings_pending,
 		sizeof (port->settings));
@@ -376,12 +366,10 @@ gp_port_usbscsi_find_device(GPPort *port, int idvendor, int idproduct)
 	unsigned short vendor_id, product_id;
 	const char *sg;
 
-	if (!port)
-		return GP_ERROR_BAD_PARAMETERS;
+	C_PARAMS (port);
 
 	sg = strrchr (port->settings.usbscsi.path, '/');
-	if (!sg)
-		return GP_ERROR_BAD_PARAMETERS;
+	C_PARAMS (sg);
 	sg++;
 
 	CHECK (gp_port_usbscsi_get_usb_id (sg, &vendor_id, &product_id))
@@ -396,10 +384,9 @@ gp_port_library_operations ()
 {
 	GPPortOperations *ops;
 
-	ops = malloc (sizeof (GPPortOperations));
+	ops = calloc (1, sizeof (GPPortOperations));
 	if (!ops)
 		return (NULL);
-	memset (ops, 0, sizeof (GPPortOperations)); 
 
 	ops->init   = gp_port_usbscsi_init;
 	ops->exit   = gp_port_usbscsi_exit;

@@ -32,6 +32,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <gphoto2/gphoto2.h>
 #include <gphoto2/gphoto2-port.h>
@@ -183,7 +184,7 @@ spca50x_flash_get_TOC(CameraPrivateLibrary *pl, int *filecount)
 
 	if (pl->bridge == BRIDGE_SPCA500) { /* For dsc350 type cams */
 		/* read the TOC from the cam */
-		CHECK (gp_port_read (pl->gpdev, pl->flash_toc, toc_size));
+		CHECK (gp_port_read (pl->gpdev, (char *)pl->flash_toc, toc_size));
 		/* reset to idle */
 		CHECK (gp_port_usb_msg_write(pl->gpdev, 0x00, 0x0000, 0x0100, NULL, 0x0));
 		*filecount = (int)pl->flash_toc[10];
@@ -195,7 +196,7 @@ spca50x_flash_get_TOC(CameraPrivateLibrary *pl, int *filecount)
 			return GP_ERROR_NO_MEMORY;
 	} else { /* all other cams with flash... */
 		/* read the TOC from the cam */
-		CHECK (gp_port_read (pl->gpdev, pl->flash_toc, toc_size));
+		CHECK (gp_port_read (pl->gpdev, (char *)pl->flash_toc, toc_size));
 	}
 	/* record that TOC has been updated - clear the "dirty" flag */
 	pl->num_files_on_flash = *filecount;
@@ -563,7 +564,7 @@ spca50x_process_thumbnail (CameraPrivateLibrary *lib,	/*  context */
 	 * This should never fail; it would be nice to have an error
 	 * code like GP_ERROR_CAMLIB_INTERNAL for cases like this.
  */
-	hdrlen = snprintf(tmp, alloc_size, "P6 %d %d 255\n", w, h);
+	hdrlen = snprintf((char*)tmp, alloc_size, "P6 %d %d 255\n", w, h);
 	true_size = w * h * 3 + hdrlen;
 	if ( true_size > alloc_size ) {
 		free (tmp);
@@ -647,7 +648,7 @@ spca500_flash_84D_get_file (CameraPrivateLibrary * pl,
 	char tbuf[260];		/*  for the file data blocks */
 	int i, j;		/*  general loop vars */
 	int blks;		/*  number of 256 byte blocks to fetch */
-	unsigned int sz;	/*  number of bytes in image */
+	int sz;			/*  number of bytes in image */
 	uint8_t *buf;		/*  buffer for the read data */
 	int type;		/*  type of image reported by header */
 	int w, h;		/*  width, height of file being read */
@@ -711,9 +712,8 @@ spca500_flash_84D_get_file (CameraPrivateLibrary * pl,
 
 		/* create a buffer to hold all the read in data */
 		buf = malloc (blks * 256);
-		if (!buf){
+		if (!buf)
 			return GP_ERROR_NO_MEMORY;
-		}
 
 		j = 0; /* k = 0; */
 		/* Now read in the image data */
@@ -860,7 +860,7 @@ spca50x_flash_get_file (CameraPrivateLibrary *lib, GPContext *context,
 		free (buf);
 		return ret;
 	}
-	ret = gp_port_read (lib->gpdev, buf, aligned_size);
+	ret = gp_port_read (lib->gpdev, (char *)buf, aligned_size);
 	if (ret < GP_OK) {
 		free (buf);
 		return ret;
@@ -999,7 +999,7 @@ spca50x_flash_init (CameraPrivateLibrary *pl, GPContext *context)
 						jpReg[i].val, jpReg[i].reg,
 						NULL, 0x00));
 			CHECK (gp_port_usb_msg_read (pl->gpdev, 0x00, 0x0000,
-						jpReg[i].reg, bytes, 0x01));
+						jpReg[i].reg, (char *)bytes, 0x01));
 		}
 		CHECK (gp_port_usb_msg_write (pl->gpdev, 0x00, 0x0001, 0x2501,
 					NULL, 0x00));
@@ -1014,11 +1014,11 @@ spca50x_flash_init (CameraPrivateLibrary *pl, GPContext *context)
 		 * command. Unfortunately it is of yet unclear, what the exact procedure
 		 * is. Until we know, let's keep this here. */
 		CHECK (gp_port_usb_msg_read (pl->gpdev, 0x01, 0x0000, 0x0001,
-					bytes, 0x01));
+					(char *)bytes, 0x01));
 		CHECK (gp_port_usb_msg_read (pl->gpdev, 0x01, 0x0000, 0x0001,
-					bytes, 0x01));
+					(char *)bytes, 0x01));
 		CHECK (gp_port_usb_msg_read (pl->gpdev, 0x01, 0x0000, 0x0001,
-					bytes, 0x01));
+					(char *)bytes, 0x01));
 
 		/* Set to idle? */
 		CHECK (gp_port_usb_msg_read (pl->gpdev, 0x01, 0x0000, 0x000f,
@@ -1030,11 +1030,11 @@ spca50x_flash_init (CameraPrivateLibrary *pl, GPContext *context)
 
 		/* firmware detection */
 		CHECK (gp_port_usb_msg_read (pl->gpdev, 0x20, 0x0000, 0x0000,
-					bytes, 0x01));
+					(char *)bytes, 0x01));
 		CHECK (gp_port_usb_msg_read (pl->gpdev, 0x20, 0x0000, 0x0000,
-					bytes, 0x05));
+					(char *)bytes, 0x05));
 		CHECK (gp_port_usb_msg_read (pl->gpdev, 0x21, 0x0000, 0x0000,
-					bytes, 0x01));
+					(char *)bytes, 0x01));
 
 		/*
 		 * The cam is supposed to sync up with the computer time here
@@ -1059,7 +1059,7 @@ spca50x_flash_init (CameraPrivateLibrary *pl, GPContext *context)
 
 		for (i=0;i<7;i++)
 			CHECK (gp_port_usb_msg_write (pl->gpdev, 0x29, 0x0000,
-						i, bytes+i, 0x01));
+						i, (char *)bytes+i, 0x01));
 
 	}
 

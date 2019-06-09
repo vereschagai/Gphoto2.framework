@@ -1,7 +1,7 @@
 /* -*- Mode: C; indent-tabs-mode: t; c-basic-offset: 8; tab-width: 8 -*- */
 /** \file
  * 
- * \author Copyright 2001 Lutz Müller <lutz@users.sf.net>
+ * \author Copyright 2001 Lutz Mueller <lutz@users.sf.net>
  * \author Copyright 1999 Scott Fritzinger <scottf@unr.edu>
  *
  * \par License
@@ -56,9 +56,15 @@
 #endif
 
 #define CHECK_RESULT(result) {int r=(result); if (r<0) return (r);}
-#define CHECK_NULL(m) {if (!(m)) return (GP_ERROR_BAD_PARAMETERS);}
 #define CHECK_SUPP(p,t,o) {if (!(o)) {gp_port_set_error ((p), _("The operation '%s' is not supported by this device"), (t)); return (GP_ERROR_NOT_SUPPORTED);}}
 #define CHECK_INIT(p) {if (!(p)->pc->ops) {gp_port_set_error ((p), _("The port has not yet been initialized")); return (GP_ERROR_BAD_PARAMETERS);}}
+
+#define LOG_DATA(DATA, SIZE, EXPECTED, MSG_PRE, MSG_POST, ...) \
+	if (SIZE != EXPECTED) \
+		GP_LOG_DATA (DATA, SIZE, MSG_PRE " %i = 0x%x out of %i bytes " MSG_POST, SIZE, SIZE, EXPECTED, ##__VA_ARGS__); \
+	else \
+		GP_LOG_DATA (DATA, SIZE, MSG_PRE " %i = 0x%x bytes " MSG_POST, SIZE, SIZE, ##__VA_ARGS__)
+
 
 /**
  * \brief Internal private libgphoto2_port data.
@@ -87,21 +93,17 @@ struct _GPPortPrivateCore {
 int
 gp_port_new (GPPort **port)
 {
-	CHECK_NULL (port);
+	C_PARAMS (port);
 
-        gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Creating new device..."));
+        GP_LOG_D ("Creating new device...");
 
-	*port = malloc (sizeof (GPPort));
-        if (!(*port))
-		return (GP_ERROR_NO_MEMORY);
-        memset (*port, 0, sizeof (GPPort));
+	C_MEM (*port = calloc (1, sizeof (GPPort)));
 
-	(*port)->pc = malloc (sizeof (GPPortPrivateCore));
+	(*port)->pc = calloc (1, sizeof (GPPortPrivateCore));
 	if (!(*port)->pc) {
 		gp_port_free (*port);
 		return (GP_ERROR_NO_MEMORY);
 	}
-	memset ((*port)->pc, 0, sizeof (GPPortPrivateCore));
 
         return (GP_OK);
 }
@@ -109,7 +111,7 @@ gp_port_new (GPPort **port)
 static int
 gp_port_init (GPPort *port)
 {
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	if (port->pc->ops->init)
@@ -121,7 +123,7 @@ gp_port_init (GPPort *port)
 static int
 gp_port_exit (GPPort *port)
 {
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	if (port->pc->ops->exit)
@@ -146,17 +148,19 @@ gp_port_exit (GPPort *port)
 int
 gp_port_set_info (GPPort *port, GPPortInfo info)
 {
+	int ret;
+
 	GPPortLibraryOperations ops_func;
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 
-	if (port->pc->info.name) free (port->pc->info.name);
-	port->pc->info.name = strdup (info->name);
-	if (port->pc->info.path) free (port->pc->info.path);
-	port->pc->info.path = strdup (info->path);
+	free (port->pc->info.name);
+	C_MEM (port->pc->info.name = strdup (info->name));
+	free (port->pc->info.path);
+	C_MEM (port->pc->info.path = strdup (info->path));
 	port->pc->info.type = info->type;
-	if (port->pc->info.library_filename) free (port->pc->info.library_filename);
-	port->pc->info.library_filename = strdup (info->library_filename);
+	free (port->pc->info.library_filename);
+	C_MEM (port->pc->info.library_filename = strdup (info->library_filename));
 
 	port->type = info->type;
 
@@ -167,16 +171,16 @@ gp_port_set_info (GPPort *port, GPPortInfo info)
 		port->pc->ops = NULL;
 	}
 	if (port->pc->lh) {
+#if !defined(VALGRIND)
 		lt_dlclose (port->pc->lh);
 		lt_dlexit ();
+#endif
 	}
 
 	lt_dlinit ();
 	port->pc->lh = lt_dlopenext (info->library_filename);
 	if (!port->pc->lh) {
-		gp_log (GP_LOG_ERROR, "gphoto2-port", _("Could not load "
-			"'%s' ('%s')."), info->library_filename,
-			lt_dlerror ());
+		GP_LOG_E ("Could not load '%s' ('%s').", info->library_filename, lt_dlerror ());
 		lt_dlexit ();
 		return (GP_ERROR_LIBRARY);
 	}
@@ -184,9 +188,8 @@ gp_port_set_info (GPPort *port, GPPortInfo info)
 	/* Load the operations */
 	ops_func = lt_dlsym (port->pc->lh, "gp_port_library_operations");
 	if (!ops_func) {
-		gp_log (GP_LOG_ERROR, "gphoto2-port", _("Could not find "
-			"'gp_port_library_operations' in '%s' ('%s')"),
-			info->library_filename, lt_dlerror ());
+		GP_LOG_E ("Could not find 'gp_port_library_operations' in '%s' ('%s')",
+			  info->library_filename, lt_dlerror ());
 		lt_dlclose (port->pc->lh);
 		lt_dlexit ();
 		port->pc->lh = NULL;
@@ -228,9 +231,11 @@ gp_port_set_info (GPPort *port, GPPortInfo info)
 		/* Nothing in here */
 		break;
 	}
-	gp_port_set_settings (port, port->settings);
+	ret = gp_port_set_settings (port, port->settings);
+	if (ret != GP_ERROR_NOT_SUPPORTED)
+		CHECK_RESULT (ret);
 
-	return (GP_OK);
+	return GP_OK;
 }
 
 /**
@@ -245,7 +250,7 @@ gp_port_set_info (GPPort *port, GPPortInfo info)
 int
 gp_port_get_info (GPPort *port, GPPortInfo *info)
 {
-	CHECK_NULL (port && info);
+	C_PARAMS (port && info);
 
 	*info = &port->pc->info;
 	return (GP_OK);
@@ -263,12 +268,11 @@ gp_port_get_info (GPPort *port, GPPortInfo *info)
 int
 gp_port_open (GPPort *port)
 {
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Opening %s port..."),
-		port->type == GP_PORT_SERIAL ? "SERIAL" : 
-			(port->type == GP_PORT_USB ? "USB" : ""));
+	GP_LOG_D ("Opening %s port...",
+		  port->type == GP_PORT_SERIAL ? "SERIAL" : (port->type == GP_PORT_USB ? "USB" : ""));
 
 	CHECK_SUPP (port, "open", port->pc->ops->open);
 	CHECK_RESULT (port->pc->ops->open (port));
@@ -288,9 +292,9 @@ gp_port_open (GPPort *port)
 int
 gp_port_close (GPPort *port)
 {
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Closing port..."));
+	GP_LOG_D ("Closing port...");
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	CHECK_SUPP (port, "close", port->pc->ops->close);
@@ -310,9 +314,9 @@ gp_port_close (GPPort *port)
 int
 gp_port_reset (GPPort *port)
 {
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Resetting port..."));
+	GP_LOG_D ("Resetting port...");
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	CHECK_SUPP (port, "reset", port->pc->ops->reset);
@@ -332,9 +336,9 @@ gp_port_reset (GPPort *port)
 int
 gp_port_free (GPPort *port)
 {
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Freeing port..."));
+	GP_LOG_D ("Freeing port...");
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 
 	if (port->pc) {
 		if (port->pc->ops) {
@@ -348,14 +352,16 @@ gp_port_free (GPPort *port)
 		}
 
 		if (port->pc->lh) {
+#if !defined(VALGRIND)
 			lt_dlclose (port->pc->lh);
 			lt_dlexit ();
+#endif
 			port->pc->lh = NULL;
 		}
 
-		if (port->pc->info.name) free (port->pc->info.name);
-		if (port->pc->info.path) free (port->pc->info.path);
-		if (port->pc->info.library_filename) free (port->pc->info.library_filename);
+		free (port->pc->info.name);
+		free (port->pc->info.path);
+		free (port->pc->info.library_filename);
 
 		free (port->pc);
 		port->pc = NULL;
@@ -383,20 +389,20 @@ gp_port_write (GPPort *port, const char *data, int size)
 {
 	int retval;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Writing %i=0x%x byte(s) "
-		"to port..."), size, size);
+        gp_log (GP_LOG_DATA, __func__, "Writing %i = 0x%x bytes to port...", size, size);
 
-	CHECK_NULL (port && data);
+ 	C_PARAMS (port && data);
 	CHECK_INIT (port);
-
-	gp_log_data ("gphoto2-port", data, size);
 
 	/* Check if we wrote all bytes */
 	CHECK_SUPP (port, "write", port->pc->ops->write);
 	retval = port->pc->ops->write (port, data, size);
-	CHECK_RESULT (retval);
-	if ((port->type != GP_PORT_SERIAL) && (retval != size))
-		gp_log (GP_LOG_DEBUG, "gphoto2-port", ngettext("Could only write %i out of %i byte","Could only write %i out of %i bytes",size), retval, size);
+	if (retval < 0) {
+		GP_LOG_E ("Writing %i = 0x%x bytes to port failed: %s (%d)",
+			  size, size, gp_port_result_as_string(retval), retval);
+		return retval;
+	}
+	LOG_DATA (data, retval, size, "Wrote  ", "to port:");
 
 	return (retval);
 }
@@ -418,22 +424,20 @@ gp_port_read (GPPort *port, char *data, int size)
 {
         int retval;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", ngettext("Reading %i=0x%x byte from port...","Reading %i=0x%x bytes from port...", size),
-		size, size);
+	gp_log (GP_LOG_DATA, __func__, "Reading %i = 0x%x bytes from port...", size, size);
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	/* Check if we read as many bytes as expected */
 	CHECK_SUPP (port, "read", port->pc->ops->read);
 	retval = port->pc->ops->read (port, data, size);
-	CHECK_RESULT (retval);
-	if (retval != size)
-		gp_log (GP_LOG_DEBUG, "gphoto2-port", ngettext(
-			"Could only read %i out of %i byte",
-			"Could only read %i out of %i byte(s)", size), retval, size);
-
-	gp_log_data ("gphoto2-port", data, retval);
+	if (retval < 0) {
+		GP_LOG_E ("Reading %i = 0x%x bytes from port failed: %s (%d)",
+			  size, size, gp_port_result_as_string(retval), retval);
+		return retval;
+	}
+	LOG_DATA (data, retval, size, "Read   ", "from port:");
 
 	return (retval);
 }
@@ -456,24 +460,16 @@ gp_port_check_int (GPPort *port, char *data, int size)
 {
         int retval;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port",
-		ngettext(
-	"Reading %i=0x%x byte from interrupt endpoint...",
-	"Reading %i=0x%x bytes from interrupt endpoint...",
-	size), size, size);
+	gp_log (GP_LOG_DATA, __func__, "Reading %i = 0x%x bytes from interrupt endpoint...", size, size);
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	/* Check if we read as many bytes as expected */
 	CHECK_SUPP (port, "check_int", port->pc->ops->check_int);
 	retval = port->pc->ops->check_int (port, data, size, port->timeout);
 	CHECK_RESULT (retval);
-	if (retval != size)
-		gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Could only read %i "
-			"out of %i byte(s)"), retval, size);
-
-	gp_log_data ("gphoto2-port", data, retval);
+	LOG_DATA (data, retval, size, "Read   ", "from interrupt endpoint:");
 
 	return (retval);
 }
@@ -497,7 +493,9 @@ gp_port_check_int_fast (GPPort *port, char *data, int size)
 {
         int retval;
 
-	CHECK_NULL (port);
+        gp_log (GP_LOG_DATA, __func__, "Reading %i = 0x%x bytes from interrupt endpoint...", size, size);
+
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	/* Check if we read as many bytes as expected */
@@ -506,33 +504,12 @@ gp_port_check_int_fast (GPPort *port, char *data, int size)
 	CHECK_RESULT (retval);
 
 #ifdef IGNORE_EMPTY_INTR_READS
-	if (retval != size && retval != 0 )
-#else
-	if (retval != size )
+	/* For Canon cameras, we will make lots of
+	   reads that will return zero length. Don't
+	   bother to log them as errors. */
+	if (retval != 0 )
 #endif
-		gp_log (GP_LOG_DEBUG, "gphoto2-port", ngettext(
-		"Could only read %i out of %i byte",
-		"Could only read %i out of %i bytes",
-		size
-		), retval, size);
-
-#ifdef IGNORE_EMPTY_INTR_READS
-	if ( retval != 0 ) {
-#endif
-		/* For Canon cameras, we will make lots of
-		   reads that will return zero length. Don't
-		   bother to log them as errors. */
-		gp_log (GP_LOG_DEBUG, "gphoto2-port",
-			ngettext(
-			"Reading %i=0x%x byte from interrupt endpoint (fast)...",
-			"Reading %i=0x%x bytes from interrupt endpoint (fast)...",
-			size
-			),
-			size, size);
-		gp_log_data ("gphoto2-port", data, retval);
-#ifdef IGNORE_EMPTY_INTR_READS
-	}
-#endif
+		LOG_DATA (data, retval, size, "Read   ", "from interrupt endpoint (fast):");
 
 	return (retval);
 }
@@ -552,11 +529,9 @@ gp_port_check_int_fast (GPPort *port, char *data, int size)
 int
 gp_port_set_timeout (GPPort *port, int timeout)
 {
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Setting timeout to %i "
-		"millisecond(s)..."), timeout);
+	C_PARAMS (port);
 
-	CHECK_NULL (port);
-
+        GP_LOG_D ("Setting port timeout to %i milliseconds.", timeout);
         port->timeout = timeout;
 
         return GP_OK;
@@ -588,13 +563,9 @@ int gp_port_timeout_get (GPPort *port, int *timeout)
 int
 gp_port_get_timeout (GPPort *port, int *timeout)
 {
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Getting timeout..."));
+	C_PARAMS (port);
 
-	CHECK_NULL (port);
-
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Current timeout: %i "
-		"milliseconds"), port->timeout);
-
+	GP_LOG_D ("Current port timeout is %i milliseconds.", port->timeout);
         *timeout = port->timeout;
 
         return GP_OK;
@@ -614,9 +585,9 @@ gp_port_get_timeout (GPPort *port, int *timeout)
 int
 gp_port_set_settings (GPPort *port, GPPortSettings settings)
 {
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Setting settings..."));
+	GP_LOG_D ("Setting settings...");
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
         /*
@@ -656,7 +627,7 @@ int gp_port_settings_set (GPPort *port, GPPortSettings settings)
 int
 gp_port_get_settings (GPPort *port, GPPortSettings *settings)
 {
-	CHECK_NULL (port);
+	C_PARAMS (port);
 
         memcpy (settings, &(port->settings), sizeof (gp_port_settings));
 
@@ -675,17 +646,15 @@ gp_port_get_settings (GPPort *port, GPPortSettings *settings)
 int
 gp_port_get_pin (GPPort *port, GPPin pin, GPLevel *level)
 {
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Getting level of pin %i..."),
-		pin);
+	GP_LOG_D ("Getting level of pin %i...", pin);
 
-	CHECK_NULL (port && level);
+	C_PARAMS (port && level);
 	CHECK_INIT (port);
 
 	CHECK_SUPP (port, "get_pin", port->pc->ops->get_pin);
         CHECK_RESULT (port->pc->ops->get_pin (port, pin, level));
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Level of pin %i: %i"),
-		pin, *level);
+	GP_LOG_D ("Level of pin %i: %i", pin, *level);
 
 	return (GP_OK);
 }
@@ -737,12 +706,11 @@ gp_port_set_pin (GPPort *port, GPPin pin, GPLevel level)
 	for (j = 0; LevelTable[j].description; j++)
 		if (LevelTable[j].level == level)
 			break;
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Setting pin %i "
-		"(%s: '%s') to '%s'..."), 
+	GP_LOG_D ("Setting pin %i (%s: '%s') to '%s'...",
 		PinTable[i].number, PinTable[i].description_short,
 		PinTable[i].description_long, _(LevelTable[j].description));
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	CHECK_SUPP (port, "set_pin", port->pc->ops->set_pin);
@@ -764,10 +732,9 @@ gp_port_set_pin (GPPort *port, GPPin pin, GPLevel level)
 int
 gp_port_send_break (GPPort *port, int duration)
 {
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Sending break (%i "
-		"milliseconds)..."), duration);
+	GP_LOG_D ("Sending break (%i milliseconds)...", duration);
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
         CHECK_SUPP (port, "send_break", port->pc->ops->send_break);
@@ -790,9 +757,9 @@ gp_port_send_break (GPPort *port, int duration)
 int
 gp_port_flush (GPPort *port, int direction)
 {
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Flushing port..."));
+	GP_LOG_D ("Flushing port...");
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 
 	CHECK_SUPP (port, "flush", port->pc->ops->flush);
 	CHECK_RESULT (port->pc->ops->flush (port, direction));
@@ -818,7 +785,7 @@ gp_port_flush (GPPort *port, int direction)
 int
 gp_port_usb_find_device (GPPort *port, int idvendor, int idproduct)
 {
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	CHECK_SUPP (port, "find_device", port->pc->ops->find_device);
@@ -842,7 +809,7 @@ gp_port_usb_find_device (GPPort *port, int idvendor, int idproduct)
 int
 gp_port_usb_find_device_by_class (GPPort *port, int mainclass, int subclass, int protocol)
 {
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	CHECK_SUPP (port, "find_device_by_class", port->pc->ops->find_device_by_class);
@@ -864,9 +831,9 @@ gp_port_usb_find_device_by_class (GPPort *port, int mainclass, int subclass, int
 int
 gp_port_usb_clear_halt (GPPort *port, int ep)
 {
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Clear halt..."));
+	GP_LOG_D ("Clear USB halt...");
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	CHECK_SUPP (port, "clear_halt", port->pc->ops->clear_halt);
@@ -895,12 +862,10 @@ gp_port_usb_msg_write (GPPort *port, int request, int value, int index,
 {
         int retval;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Writing message "
-		"(request=0x%x value=0x%x index=0x%x size=%i=0x%x)..."),
-		request, value, index, size, size);
-	gp_log_data ("gphoto2-port", bytes, size);
+	GP_LOG_DATA (bytes, size, "Writing message (request=0x%x value=0x%x index=0x%x size=%i=0x%x):",
+		     request, value, index, size, size);
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	CHECK_SUPP (port, "msg_write", port->pc->ops->msg_write);
@@ -930,25 +895,19 @@ gp_port_usb_msg_read (GPPort *port, int request, int value, int index,
 {
         int retval;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", _("Reading message "
-		"(request=0x%x value=0x%x index=0x%x size=%i=0x%x)..."),
+	gp_log (GP_LOG_DATA, __func__, "Reading message (request=0x%x value=0x%x index=0x%x size=%i=0x%x)...",
 		request, value, index, size, size);
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	CHECK_SUPP (port, "msg_read", port->pc->ops->msg_read);
         retval = port->pc->ops->msg_read (port, request, value, index, bytes, size);
 	CHECK_RESULT (retval);
 
-	if (retval != size)
-		gp_log (GP_LOG_DEBUG, "gphoto2-port", ngettext(
-			"Could only read %i out of %i byte",
-			"Could only read %i out of %i bytes",
-			size
-		), retval, size);
+	LOG_DATA (bytes, retval, size, "Read", "USB message (request=0x%x value=0x%x index=0x%x size=%i=0x%x)",
+		  request, value, index, size, size);
 
-	gp_log_data ("gphoto2-port", bytes, retval);
         return (retval);
 }
 
@@ -976,12 +935,10 @@ gp_port_usb_msg_interface_write (GPPort *port, int request,
 {
         int retval;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", "Writing message "
-		"(request=0x%x value=0x%x index=0x%x size=%i=0x%x)...",
-		request, value, index, size, size);
-	gp_log_data ("gphoto2-port", bytes, size);
+	GP_LOG_DATA (bytes, size, "Writing message (request=0x%x value=0x%x index=0x%x size=%i=0x%x)...",
+		     request, value, index, size, size);
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	CHECK_SUPP (port, "msg_build", port->pc->ops->msg_interface_write);
@@ -1013,11 +970,10 @@ gp_port_usb_msg_interface_read (GPPort *port, int request, int value, int index,
 {
         int retval;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", "Reading message "
-		"(request=0x%x value=0x%x index=0x%x size=%i=0x%x)...",
+	gp_log (GP_LOG_DATA, __func__, "Reading message (request=0x%x value=0x%x index=0x%x size=%i=0x%x)...",
 		request, value, index, size, size);
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	CHECK_SUPP (port, "msg_read", port->pc->ops->msg_interface_read);
@@ -1025,13 +981,8 @@ gp_port_usb_msg_interface_read (GPPort *port, int request, int value, int index,
         		value, index, bytes, size);
 	CHECK_RESULT (retval);
 
-	if (retval != size)
-		gp_log (GP_LOG_DEBUG, "gphoto2-port", ngettext(
-			"Could only read %i out of %i byte",
-			"Could only read %i out of %i bytes",
-			size), retval, size);
-
-	gp_log_data ("gphoto2-port", bytes, retval);
+	LOG_DATA (bytes, retval, size, "Read", "USB message (request=0x%x value=0x%x index=0x%x size=%i=0x%x)",
+		  request, value, index, size, size);
 
         return (retval);
 }
@@ -1062,12 +1013,10 @@ gp_port_usb_msg_class_write (GPPort *port, int request,
 {
         int retval;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", "Writing message "
-		"(request=0x%x value=0x%x index=0x%x size=%i=0x%x)...",
-		request, value, index, size, size);
-	gp_log_data ("gphoto2-port", bytes, size);
+	GP_LOG_DATA (bytes, size, "Writing message (request=0x%x value=0x%x index=0x%x size=%i=0x%x):",
+		     request, value, index, size, size);
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	CHECK_SUPP (port, "msg_build", port->pc->ops->msg_class_write);
@@ -1099,11 +1048,10 @@ gp_port_usb_msg_class_read (GPPort *port, int request, int value, int index,
 {
         int retval;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", "Reading message "
-		"(request=0x%x value=0x%x index=0x%x size=%i=0x%x)...",
+	gp_log (GP_LOG_DATA, __func__, "Reading message (request=0x%x value=0x%x index=0x%x size=%i=0x%x)...",
 		request, value, index, size, size);
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	CHECK_SUPP (port, "msg_read", port->pc->ops->msg_class_read);
@@ -1111,14 +1059,8 @@ gp_port_usb_msg_class_read (GPPort *port, int request, int value, int index,
         		value, index, bytes, size);
 	CHECK_RESULT (retval);
 
-	if (retval != size)
-		gp_log (GP_LOG_DEBUG, "gphoto2-port", ngettext(
-			"Could only read %i out of %i byte",
-			"Could only read %i out of %i bytes",
-			size
-			), retval, size);
-
-	gp_log_data ("gphoto2-port", bytes, retval);
+	LOG_DATA (bytes, retval, size, "Read", "USB message (request=0x%x value=0x%x index=0x%x size=%i=0x%x)",
+		  request, value, index, size, size);
 
         return (retval);
 }
@@ -1139,16 +1081,15 @@ gp_port_seek (GPPort *port, int offset, int whence)
 {
 	int retval;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", "Seeking to: %d whence: %d",
-		offset, whence);
+	GP_LOG_D ("Seeking to: %d whence: %d", offset, whence);
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	CHECK_SUPP (port, "seek", port->pc->ops->seek);
 	retval = port->pc->ops->seek (port, offset, whence);
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", "Seek result: %d", retval);
+	GP_LOG_D ("Seek result: %d", retval);
 
 	return retval;
 }
@@ -1177,14 +1118,11 @@ int gp_port_send_scsi_cmd (GPPort *port, int to_dev,
 {
 	int retval;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", "Sending scsi cmd:");
-	gp_log_data ("gphoto2-port", cmd, cmd_size);
-	if (to_dev && data_size) {
-		gp_log (GP_LOG_DEBUG, "gphoto2-port", "scsi cmd data:");
-		gp_log_data ("gphoto2-port", data, data_size);
-	}
+	GP_LOG_DATA (cmd, cmd_size, "Sending scsi cmd:");
+	if (to_dev && data_size)
+		GP_LOG_DATA (data, data_size, "with scsi cmd data:");
 
-	CHECK_NULL (port);
+	C_PARAMS (port);
 	CHECK_INIT (port);
 
 	memset (sense, 0, sense_size);
@@ -1192,37 +1130,34 @@ int gp_port_send_scsi_cmd (GPPort *port, int to_dev,
 	retval = port->pc->ops->send_scsi_cmd (port, to_dev, cmd, cmd_size,
 					sense, sense_size, data, data_size);
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port", "scsi cmd result: %d", retval);
+	GP_LOG_D ("scsi cmd result: %d", retval);
 
 	if (sense[0] != 0) {
-		gp_log (GP_LOG_DEBUG, "gphoto2-port", "sense data:");
-		gp_log_data ("gphoto2-port", sense, sense_size);
+		GP_LOG_DATA (sense, sense_size, "sense data:");
 		/* https://secure.wikimedia.org/wikipedia/en/wiki/Key_Code_Qualifier */
-		gp_log(GP_LOG_DEBUG, "gphoto2-port","sense decided:");
+		GP_LOG_D ("sense decided:");
 		if ((sense[0]&0x7f)!=0x70) {
-			gp_log(GP_LOG_DEBUG, "gphoto2-port","\tInvalid header.");
+			GP_LOG_D ("\tInvalid header.");
 		}
-		gp_log(GP_LOG_DEBUG, "gphoto2-port", "\tCurrent command read filemark: %s",(sense[2]&0x80)?"yes":"no");
-		gp_log(GP_LOG_DEBUG, "gphoto2-port", "\tEarly warning passed: %s",(sense[2]&0x40)?"yes":"no");
-		gp_log(GP_LOG_DEBUG, "gphoto2-port", "\tIncorrect blocklengt: %s",(sense[2]&0x20)?"yes":"no");
-		gp_log(GP_LOG_DEBUG, "gphoto2-port", "\tSense Key: %d",sense[2]&0xf);
+		GP_LOG_D ("\tCurrent command read filemark: %s",(sense[2]&0x80)?"yes":"no");
+		GP_LOG_D ("\tEarly warning passed: %s",(sense[2]&0x40)?"yes":"no");
+		GP_LOG_D ("\tIncorrect blocklengt: %s",(sense[2]&0x20)?"yes":"no");
+		GP_LOG_D ("\tSense Key: %d",sense[2]&0xf);
 		if (sense[0]&0x80)
-			gp_log(GP_LOG_DEBUG, "gphoto2-port", "\tResidual Length: %d",sense[3]*0x1000000+sense[4]*0x10000+sense[5]*0x100+sense[6]);
-		gp_log(GP_LOG_DEBUG, "gphoto2-port", "\tAdditional Sense Length: %d",sense[7]);
-		gp_log(GP_LOG_DEBUG, "gphoto2-port", "\tAdditional Sense Code: %d",sense[12]);
-		gp_log(GP_LOG_DEBUG, "gphoto2-port", "\tAdditional Sense Code Qualifier: %d",sense[13]);
+			GP_LOG_D ("\tResidual Length: %d",sense[3]*0x1000000+sense[4]*0x10000+sense[5]*0x100+sense[6]);
+		GP_LOG_D ("\tAdditional Sense Length: %d",sense[7]);
+		GP_LOG_D ("\tAdditional Sense Code: %d",sense[12]);
+		GP_LOG_D ("\tAdditional Sense Code Qualifier: %d",sense[13]);
 		if (sense[15]&0x80) {
-			gp_log(GP_LOG_DEBUG, "gphoto2-port", "\tIllegal Param is in %s",(sense[15]&0x40)?"the CDB":"the Data Out Phase");
+			GP_LOG_D ("\tIllegal Param is in %s",(sense[15]&0x40)?"the CDB":"the Data Out Phase");
 			if (sense[15]&0x8) {
-				gp_log(GP_LOG_DEBUG, "gphoto2-port", "Pointer at %d, bit %d",sense[16]*256+sense[17],sense[15]&0x7);
+				GP_LOG_D ("Pointer at %d, bit %d",sense[16]*256+sense[17],sense[15]&0x7);
 			}
 		}
 	}
 
-	if (!to_dev && data_size) {
-		gp_log (GP_LOG_DEBUG, "gphoto2-port", "scsi cmd data:");
-		gp_log_data ("gphoto2-port", data, data_size);
-	}
+	if (!to_dev && data_size)
+		GP_LOG_DATA (data, data_size, "scsi cmd data:");
 
 	return retval;
 }
@@ -1242,14 +1177,13 @@ gp_port_set_error (GPPort *port, const char *format, ...)
 {
 	va_list args;
 
-	if (!port)
-		return (GP_ERROR_BAD_PARAMETERS);
+	C_PARAMS (port);
 
 	if (format) {
 		va_start (args, format);
 		vsnprintf (port->pc->error, sizeof (port->pc->error),
 			   _(format), args);
-		gp_log (GP_LOG_ERROR, "gphoto2-port", "%s", port->pc->error);
+		GP_LOG_E ("%s", port->pc->error);
 		va_end (args);
 	} else
 		port->pc->error[0] = '\0';

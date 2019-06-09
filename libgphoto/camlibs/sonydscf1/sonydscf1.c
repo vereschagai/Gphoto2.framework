@@ -1,3 +1,26 @@
+/* sonydscf1.c
+ *
+ * Copyright (C) M. Adam Kendall <joker@penguinpub.com>
+ * Copyright (C) 2002 Bart van Leeuwen <bart@netage.nl>
+ *
+ * Based on the chotplay CLI interface from Ken-ichi Hayashi 1996,1997
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA  02110-1301  USA
+ */
+
 #include "config.h"
 
 #include <stdio.h>
@@ -78,7 +101,7 @@ make_jpeg_comment(unsigned char *buf, unsigned char *jpeg_comment)
   i = 0;
   while (1) {
     if ((reso == reso_tab[i].reso_val) || (reso_tab[i].reso_val == 0)) {
-      cur = 6 + sprintf(&jpeg_comment[6], "Resolution: %s\n",
+      cur = 6 + sprintf((char*)&jpeg_comment[6], "Resolution: %s\n",
                           reso_tab[i].reso_conv);
       break;
     }
@@ -92,7 +115,7 @@ make_jpeg_comment(unsigned char *buf, unsigned char *jpeg_comment)
   while (1) {
     if ((shutter == sh_speed_tab[i].spd_val) ||
         (sh_speed_tab[i].spd_val == 0)) {
-      cur = cur + sprintf(&jpeg_comment[cur], "Shutter-speed: %s\n",
+      cur = cur + sprintf((char*)&jpeg_comment[cur], "Shutter-speed: %s\n",
                           sh_speed_tab[i].spd_conv);
       break;
     }
@@ -101,17 +124,17 @@ make_jpeg_comment(unsigned char *buf, unsigned char *jpeg_comment)
 
   /* PMP comment */
   if (*(buf+PMP_COMMENT)) {
-    cur = cur + sprintf(&jpeg_comment[cur], "Comment: %s\n",
+    cur = cur + sprintf((char*)&jpeg_comment[cur], "Comment: %s\n",
                         (char *)(buf+PMP_COMMENT));
   }
 
   /* taken date */
   if (*(buf+PMP_TAKE_YEAR) == 0xff) {
-    cur = cur + sprintf(&jpeg_comment[cur],
+    cur = cur + sprintf((char*)&jpeg_comment[cur],
                         "Date-Taken: ----/--/-- --:--:--\n");
   }
   else {
-    cur = cur + sprintf(&jpeg_comment[cur],
+    cur = cur + sprintf((char*)&jpeg_comment[cur],
                         "Date-Taken: %d/%02d/%02d %02d:%02d:%02d\n",
     2000+(*(buf+PMP_TAKE_YEAR)), *(buf+PMP_TAKE_MONTH),
     *(buf+PMP_TAKE_DATE), *(buf+PMP_TAKE_HOUR), *(buf+PMP_TAKE_MINUTE),
@@ -120,11 +143,11 @@ make_jpeg_comment(unsigned char *buf, unsigned char *jpeg_comment)
 
   /* edited date */
   if (*(buf+PMP_EDIT_YEAR) == 0xff) {
-    cur = cur + sprintf(&jpeg_comment[cur],
+    cur = cur + sprintf((char*)&jpeg_comment[cur],
                         "Date-Edited: ----/--/-- --:--:--\n");
   }
   else {
-    cur = cur + sprintf(&jpeg_comment[cur],
+    cur = cur + sprintf((char*)&jpeg_comment[cur],
                         "Date-Edited: %d/%02d/%02d %02d:%02d:%02d\n",
     2000+(*(buf+PMP_EDIT_YEAR)), *(buf+PMP_EDIT_MONTH),
     *(buf+PMP_EDIT_DATE), *(buf+PMP_EDIT_HOUR), *(buf+PMP_EDIT_MINUTE),
@@ -133,7 +156,7 @@ make_jpeg_comment(unsigned char *buf, unsigned char *jpeg_comment)
 
   /* use flash? */
   if (*(buf+PMP_FLASH) != 0) {
-    cur = cur + sprintf(&jpeg_comment[cur], "Flash: on\n");
+    cur = cur + sprintf((char*)&jpeg_comment[cur], "Flash: on\n");
   }
 
   /* insert total jpeg comment length */
@@ -148,14 +171,13 @@ get_picture_information(GPPort *port,int *pmx_num, int outit)
 {
   unsigned char buforg[PMF_MAXSIZ];
   char name[64];
-  long len;
   int i, n;
   int j, k;
   char *buf = (char *) &buforg;
 
   strcpy(name, "/PIC_CAM/PIC00000/PIC_INF.PMF");
   F1ok(port);
-  len = F1getdata(port, name, buf);
+  F1getdata(port, name, (unsigned char *)buf);
 
   n = buf[26] * 256 + buf[27]; /* how many files */
   *pmx_num = buf[31];  /* ??? */
@@ -240,7 +262,7 @@ get_file(GPPort *port, char *name, CameraFile *file, int format, GPContext *cont
     return GP_ERROR_IO_READ;
   }
   jpegcommentlen = make_jpeg_comment(buf, jpeg_comment);
-  ret = gp_file_append (file, jpeg_comment, jpegcommentlen);
+  ret = gp_file_append (file, (char *)jpeg_comment, jpegcommentlen);
   if (ret < GP_OK) return ret;
 
   total = 126;
@@ -251,7 +273,7 @@ get_file(GPPort *port, char *name, CameraFile *file, int format, GPContext *cont
     if(len < 0)
       return GP_ERROR_IO_READ;
     total = total + len;
-    gp_file_append (file, buf, len);
+    gp_file_append (file, (char *)buf, len);
     gp_context_progress_update (context, id, total);
     if (gp_context_cancel (context) == GP_CONTEXT_FEEDBACK_CANCEL) {
 	ret = GP_ERROR_CANCEL;
@@ -303,7 +325,7 @@ get_thumbnail(GPPort *port,char *name, CameraFile *file, int format, int n)
   filelen = buf[12] * 0x1000000 + buf[13] * 0x10000 +
     buf[14] * 0x100 + buf[15];
 
-  return gp_file_append (file, &buf[256], filelen);
+  return gp_file_append (file, (char *)&buf[256], filelen);
 }
 
 #if 0

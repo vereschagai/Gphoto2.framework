@@ -4,8 +4,8 @@ AC_PREREQ(2.59)
 dnl NOTE: Be version style _higher_ than the last release.
 dnl       So lastversion.X.trunk for instance. Bump X if necessary.
 
-dnl ******* THE NEXT RELEASE VERSION MUST BE 2.5.4 at least or higher!
-AC_INIT([libgphoto2 photo camera library], [2.5.3], [gphoto-devel@lists.sourceforge.net], [libgphoto2])
+dnl ******* THE NEXT RELEASE VERSION MUST BE 2.5.9 at least or higher!
+AC_INIT([libgphoto2 photo camera library], [2.5.8], [gphoto-devel@lists.sourceforge.net], [libgphoto2])
 
 AC_CONFIG_SRCDIR([libgphoto2/gphoto2-version.c])
 AC_CONFIG_HEADERS([config.h])
@@ -284,8 +284,13 @@ GP_CONFIG_MSG([XML support for Olympus E series],[${have_LIBXML2}])
 
 dnl ---------------------------------------------------------------------------
 dnl check for libgd
+dnl they call it "gdlib" ... confusing.
 dnl ---------------------------------------------------------------------------
-GP_CHECK_LIBRARY([LIBGD],[libgd],[>= 2.0],[gd.h],[gdImageCreateTrueColor],[],[],[default-on],[http://www.libgd.org/])
+GP_CHECK_LIBRARY([LIBGD],[gdlib],[>= 2.0],[gd.h],[gdImageCreateTrueColor],[
+	# gdlib-config --libs upstream does not include -lgd, but only the dependencies
+	LIBGD_LIBS="-lgd $LIBGD_LIBS"
+
+],[],[default-on],[http://www.libgd.org/])
 GP_CONFIG_MSG([libGD conversion support],[${have_LIBGD}])
 
 dnl ---------------------------------------------------------------------------
@@ -295,7 +300,7 @@ AC_HEADER_DIRENT
 # before _HEADER_STDC
 AC_HEADER_STDC
 # after _HEADER_STDC
-AC_CHECK_HEADERS([sys/param.h sys/select.h locale.h memory.h getopt.h unistd.h mcheck.h limits.h sys/time.h])
+AC_CHECK_HEADERS([sys/param.h sys/mman.h sys/select.h locale.h memory.h getopt.h unistd.h mcheck.h limits.h sys/time.h langinfo.h])
 AC_C_INLINE([])
 AC_C_CONST([])
 dnl FIXME: AC_STRUCT_TIMEZONE
@@ -309,7 +314,7 @@ dnl Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
 
 dnl Checks for library functions.
-AC_CHECK_FUNCS([getopt getopt_long mkdir strdup strncpy strcpy snprintf sprintf vsnprintf gmtime_r statfs])
+AC_CHECK_FUNCS([getopt getopt_long mkdir strdup strncpy strcpy snprintf sprintf vsnprintf gmtime_r statfs localtime_r lstat inet_aton rand_r])
 
 dnl Find out how to get struct tm
 AC_STRUCT_TM

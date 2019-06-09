@@ -1,6 +1,6 @@
 /*
  * STV0674 Vision Camera Chipset Driver
- * Copyright © 2000 Adam Harrison <adam@antispin.org>
+ * Copyright 2000 Adam Harrison <adam@antispin.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -50,7 +50,7 @@ int stv0674_ping(GPPort *port)
     int ret;
     unsigned char reply[4];
 
-    ret = gp_port_usb_msg_read (port, CMDID_PING, 0, 0, reply, 1);
+    ret = gp_port_usb_msg_read (port, CMDID_PING, 0, 0, (char *)reply, 1);
     if (ret < GP_OK)
 	return ret;
 
@@ -69,7 +69,7 @@ int stv0674_file_count(GPPort *port, int *count)
     int ret;
     unsigned char reply[4];
 
-    ret = gp_port_usb_msg_read (port, CMDID_ENUMERATE_IMAGES, 0, 0, reply, 4);
+    ret = gp_port_usb_msg_read (port, CMDID_ENUMERATE_IMAGES, 0, 0, (char *)reply, 4);
     if (ret < GP_OK)
 	return ret;
 
@@ -100,7 +100,7 @@ static int setval(unsigned char* where,unsigned long val)
 int stv0674_get_image(GPPort *port, int image_no, CameraFile *file)
 {
     unsigned char header[0x200];/*block for header */
-    int x,y,size;
+    int size;
 
     int whole,remain;
 
@@ -118,11 +118,11 @@ int stv0674_get_image(GPPort *port, int image_no, CameraFile *file)
     setval(imagno,image_no);
 
 
-    ret = gp_port_usb_msg_write (port, CMDID_SET_IMAGE, 0, 0, imagno, 4);
+    ret = gp_port_usb_msg_write (port, CMDID_SET_IMAGE, 0, 0, (char *)imagno, 4);
     if (ret < GP_OK)
 	return ret;
 
-    ret = gp_port_usb_msg_read (port, CMDID_IHAVENOIDEA, 0, 0, reply, 2);
+    ret = gp_port_usb_msg_read (port, CMDID_IHAVENOIDEA, 0, 0, (char *)reply, 2);
     if (ret < GP_OK)
 	return ret;
 
@@ -132,17 +132,14 @@ int stv0674_get_image(GPPort *port, int image_no, CameraFile *file)
 				 CMDID_READ_IMAGE,
 				 READ_IMAGE_VALUE_RESET,
 				 0,
-				 imagno,
+				 (char *)imagno,
 				 8);
     if (ret < GP_OK)
 	return ret;
 
-    gp_port_read(port, header, 0x200);
+    gp_port_read(port, (char *)header, 0x200);
 
     size=(header[0x47]<<8) | header[0x48];
-
-    x=(header[0x49]<<8) | header[0x4a];
-    y=(header[0x4b]<<8) | header[0x4c];
 
     /*create data block */
     data=malloc(size);
@@ -163,14 +160,14 @@ int stv0674_get_image(GPPort *port, int image_no, CameraFile *file)
 				     CMDID_READ_IMAGE,
 				     READ_IMAGE_VALUE_READ,
 				     0,
-				     imagno,
+				     (char *)imagno,
 				     8);
 	if (ret < GP_OK) {
 	    free (data);
 	    return ret;
 	}
 
-	gp_port_read(port, &data[current*0x1000], 0x1000);
+	gp_port_read(port, (char *)&data[current*0x1000], 0x1000);
     }
 
     if(remain)
@@ -180,22 +177,22 @@ int stv0674_get_image(GPPort *port, int image_no, CameraFile *file)
 				     CMDID_READ_IMAGE,
 				     READ_IMAGE_VALUE_READ,
 				     0,
-				     imagno,
+				     (char *)imagno,
 				     8);
 	if (ret < GP_OK) {
 	    free (data);
 	    return ret;
 	}
 
-	gp_port_read(port, &data[current*0x1000], remain);
+	gp_port_read(port, (char *)&data[current*0x1000], remain);
 
     }
 
 
-    gp_file_append(file, data, size);
+    gp_file_append(file, (char *)data, size);
     free(data);
 
-    ret = gp_port_usb_msg_write (port, CMDID_FINISH_READ, 0, 0, imagno, 4);
+    ret = gp_port_usb_msg_write (port, CMDID_FINISH_READ, 0, 0, (char *)imagno, 4);
     if (ret < GP_OK)
 	return ret;
 

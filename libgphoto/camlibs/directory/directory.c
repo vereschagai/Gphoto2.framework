@@ -1,6 +1,6 @@
 /* directory.c
  *
- * Copyright (c) 2001 Lutz Müller <lutz@users.sf.net>
+ * Copyright (c) 2001 Lutz Mueller <lutz@users.sf.net>
  * Copyright (c) 2005 Marcus Meissner <marcus@jet.franken.de>
  * Copyright (c) 2007 Hubert Figuiere <hub@figuiere.net>
  *
@@ -48,6 +48,10 @@
 #endif
 #include <fcntl.h>
 
+/* will happen only on Win32 */
+#ifndef HAVE_LSTAT
+#define lstat stat
+#endif
 
 #ifdef HAVE_LIBEXIF
 #include <libexif/exif-data.h>
@@ -57,6 +61,7 @@
 #include <gphoto2/gphoto2-library.h>
 #include <gphoto2/gphoto2-port.h>
 #include <gphoto2/gphoto2-port-log.h>
+#include <gphoto2/gphoto2-port-portability.h>
 
 #ifdef ENABLE_NLS
 #  include <libintl.h>
@@ -222,6 +227,8 @@ _get_path (GPPort *port, const char *folder, const char *file, char *path, unsig
 		char *xpath;
 
 		ret = _get_mountpoint (port, &xpath);
+		if (ret < GP_OK)
+			return ret;
 		snprintf (path, size, "%s/%s/%s", xpath, folder, file);
 	} else {
 		/* old style access */
@@ -434,7 +441,7 @@ set_info_func (CameraFilesystem *fs, const char *folder, const char *file,
 	       CameraFileInfo info, void *data, GPContext *context)
 {
 	int retval;
-	char path_old[1024], path_new[1024], path[1024];
+	char path[1024];
 	Camera *camera = (Camera*)data;
 
 	retval = _get_path (camera->port, folder, file, path, sizeof(path));
@@ -546,7 +553,7 @@ get_file_func (CameraFilesystem *fs, const char *folder, const char *filename,
 		}
 		exif_data_save_data (data, &buf, &buf_len);
 		exif_data_unref (data);
-		gp_file_set_data_and_size (file, buf, buf_len);
+		gp_file_set_data_and_size (file, (char *)buf, buf_len);
 		return (GP_OK);
 #endif /* HAVE_LIBEXIF */
 	default:
@@ -580,7 +587,7 @@ get_file_func (CameraFilesystem *fs, const char *folder, const char *filename,
 			break;
 		}
 		curread += ret;
-		gp_file_append (file, buf, ret);
+		gp_file_append (file, (char *)buf, ret);
 		gp_context_progress_update (context, id, (1.0*curread/BLOCKSIZE));
 		gp_context_idle (context);
 		if (gp_context_cancel (context) == GP_CONTEXT_FEEDBACK_CANCEL) {

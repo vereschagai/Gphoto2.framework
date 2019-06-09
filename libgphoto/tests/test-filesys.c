@@ -1,6 +1,6 @@
 /* test-filesys.c
  *
- * Copyright © 2001 Lutz Müller <lutz@users.sf.net>
+ * Copyright 2001 Lutz Mueller <lutz@users.sf.net>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,6 +21,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #ifdef HAVE_MCHECK_H
 #include <mcheck.h>
@@ -145,6 +146,7 @@ main ()
 	CameraList *list;
 	int x, count;
 	const char *name;
+	char *foldername;
 	GPContext *context;
 
 #ifdef HAVE_MCHECK_H
@@ -268,8 +270,9 @@ main ()
 	}
 
 	printf ("*** Getting folder of 'file1'...\n");
-	CHECK (gp_filesystem_get_folder (fs, "file1", &name, context));
-	printf ("... found in '%s'.\n", name);
+	CHECK (gp_filesystem_get_folder (fs, "file1", &foldername, context));
+	printf ("... found in '%s'.\n", foldername);
+	free(foldername);
 
 	printf ("*** Deleting a couple of files...\n");
 	CHECK (gp_filesystem_delete_file (fs, "/whatever", "file5", context));

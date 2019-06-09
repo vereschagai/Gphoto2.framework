@@ -1,5 +1,5 @@
 /*
- * Copyright © 1999/2000 by Henning Zabel <henning@uni-paderborn.de>
+ * Copyright 1999/2000 by Henning Zabel <henning@uni-paderborn.de>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -38,6 +38,7 @@
 
 #include <fcntl.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 
 /*
@@ -116,21 +117,10 @@ static int mdc800_usb_readFromIrq (GPPort *port,int type,unsigned char* data,int
 			}
 		}
 		/* wait the specified time */
-		if (0) {
-		    struct timeval tv1,result;
-
-		    gettimeofday(&tv1,NULL);
-		    timersub(&tv1,&tv,&result);
-		    if ((result.tv_sec > 0) || (result.tv_usec>=timeout*1000)) {
-			fprintf(stderr,"time out\n");
-			break;
-		    }
-		}
 		if (1) {
-		    struct timeval t;
-		    t.tv_usec = MDC800_USB_IRQ_INTERVAL*1000;
-		    t.tv_sec  = 0;
-		    select (1 , NULL, NULL, NULL, &t);
+
+		    usleep(MDC800_USB_IRQ_INTERVAL * 1000);
+
 		    timeout-=MDC800_USB_IRQ_INTERVAL;
 		}
 	}

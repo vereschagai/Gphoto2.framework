@@ -1,7 +1,7 @@
 /** \file
  *
  * \author Copyright 2000 Scott Fritzinger
- * \author Contributions Lutz Müller <lutz@users.sf.net> (2001)
+ * \author Contributions Lutz Mueller <lutz@users.sf.net> (2001)
  * \author Copyright 2009 Marcus Meissner
  *
  * \par License
@@ -61,8 +61,6 @@
 #  define _(String) (String)
 #  define N_(String) (String)
 #endif
-
-#define GP_MODULE "libgphoto2"
 
 #ifndef PATH_MAX
 # define PATH_MAX 4096
@@ -145,7 +143,7 @@ get_exif_mtime (const unsigned char *data, unsigned long size)
 
 	ed = exif_data_new_from_data (data, size);
 	if (!ed) {
-		GP_DEBUG ("Could not parse data for EXIF information.");
+		GP_LOG_E ("Could not parse data for EXIF information.");
 		return 0;
 	}
 
@@ -185,7 +183,7 @@ get_exif_mtime (const unsigned char *data, unsigned long size)
 #endif
 	exif_data_unref (ed);
 	if (!t1 && !t2 && !t3) {
-		GP_DEBUG ("EXIF data has not date/time tags.");
+		GP_LOG_D ("EXIF data has not date/time tags.");
 		return 0;
 	}
 
@@ -197,7 +195,7 @@ get_exif_mtime (const unsigned char *data, unsigned long size)
 	if (t3 > t)	/* "image digitized" > max(last two) ? can not be */
 		t = t3;
 
-	GP_DEBUG ("Found time in EXIF data: '%s'.", asctime (localtime (&t)));
+	GP_LOG_D ("Found time in EXIF data: '%s'.", asctime (localtime (&t)));
 	return (t);
 }
 
@@ -222,7 +220,7 @@ gp_filesystem_get_exif_mtime (CameraFilesystem *fs, const char *folder,
 	gp_file_new (&file);
 	if (gp_filesystem_get_file (fs, folder, filename,
 				GP_FILE_TYPE_EXIF, file, NULL) != GP_OK) {
-		GP_DEBUG ("Could not get EXIF data of '%s' in folder '%s'.",
+		GP_LOG_E ("Could not get EXIF data of '%s' in folder '%s'.",
 			  filename, folder);
 		gp_file_unref (file);
 		return 0;
@@ -268,9 +266,7 @@ struct _CameraFilesystem {
 #undef  MIN
 #define MIN(a, b)  (((a) < (b)) ? (a) : (b))
 
-#define CHECK_NULL(r)        {if (!(r)) return (GP_ERROR_BAD_PARAMETERS);}
 #define CR(result)           {int __r = (result); if (__r < 0) return (__r);}
-#define CHECK_MEM(m)         {if (!(m)) return (GP_ERROR_NO_MEMORY);}
 
 #define CL(result,list)			\
 {					\
@@ -312,8 +308,8 @@ delete_all_files (CameraFilesystem *fs, CameraFilesystemFolder *folder)
 {
 	CameraFilesystemFile	*file;
 
-	CHECK_NULL (folder);
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Delete all files in folder %p/%s", folder, folder->name);
+	C_PARAMS (folder);
+	GP_LOG_D ("Delete all files in folder %p/%s", folder, folder->name);
 
 	file = folder->files;
 	while (file) {
@@ -357,9 +353,9 @@ static int
 delete_folder (CameraFilesystem *fs, CameraFilesystemFolder **folder)
 {
 	CameraFilesystemFolder *next;
-	CHECK_NULL (folder);
+	C_PARAMS (folder);
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Delete one folder %p/%s", *folder, (*folder)->name);
+	GP_LOG_D ("Delete one folder %p/%s", *folder, (*folder)->name);
 	next = (*folder)->next;
 	delete_all_files (fs, *folder);
 	free ((*folder)->name);
@@ -378,13 +374,13 @@ lookup_folder (
 	const char	*curpt = foldername;
 	const char	*s;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Lookup folder '%s'...", foldername);
+	GP_LOG_D ("Lookup folder '%s'...", foldername);
 	while (folder) {
 		/* handle multiple slashes, and slashes at the end */
 		while (curpt[0]=='/')
 			curpt++;
 		if (!curpt[0]) {
-			gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Found! %s is %p", foldername, folder);
+			GP_LOG_D ("Found! %s is %p", foldername, folder);
 			return folder;
 		}
 
@@ -400,15 +396,15 @@ lookup_folder (
 			 */
 			/* the character _before_ curpt is a /, overwrite it temporary with \0 */
 			copy[curpt-foldername] = '\0';
-			gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Folder %s is dirty. "
+			GP_LOG_D ("Folder %s is dirty. "
 				"Listing folders in there to make folder clean...", copy);
 			ret = gp_list_new (&list);
 			if (ret == GP_OK) {
 				ret = gp_filesystem_list_folders (fs, copy, list, context);
 				gp_list_free (list);
-				gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Done making folder %s clean...", copy);
+				GP_LOG_D ("Done making folder %s clean...", copy);
 			} else {
-				gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Making folder %s clean failed: %d", copy, ret);
+				GP_LOG_D ("Making folder %s clean failed: %d", copy, ret);
 			}
 			free (copy);
 		}
@@ -443,7 +439,7 @@ lookup_folder_file (
 	CameraFilesystemFolder*	xf;
 	CameraFilesystemFile*	f;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Lookup folder %s file %s", folder, filename);
+	GP_LOG_D ("Lookup folder %s file %s", folder, filename);
 	xf = lookup_folder (fs, fs->rootfolder, folder, context);
 	if (!xf) return GP_ERROR_DIRECTORY_NOT_FOUND;
 	/* Check if we need to load the filelist of the folder ... */
@@ -453,16 +449,16 @@ lookup_folder_file (
 		/*
                  * The folder is dirty. List the files in it to make it clean.
 		 */
-		gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Folder %s is dirty. "
+		GP_LOG_D ("Folder %s is dirty. "
 			"Listing files in there to make folder clean...", folder);
 		ret = gp_list_new (&list);
 		if (ret == GP_OK) {
 			ret = gp_filesystem_list_files (fs, folder, list, context);
 			gp_list_free (list);
-			gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Done making folder %s clean...", folder);
+			GP_LOG_D ("Done making folder %s clean...", folder);
 		}
 		if (ret != GP_OK)
-			gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Making folder %s clean failed: %d", folder, ret);
+			GP_LOG_D ("Making folder %s clean failed: %d", folder, ret);
 	}
 
 	f = xf->files;
@@ -482,7 +478,7 @@ static int
 recurse_delete_folder (CameraFilesystem *fs, CameraFilesystemFolder *folder) {
 	CameraFilesystemFolder  **f;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Recurse delete folder %p/%s", folder, folder->name);
+	GP_LOG_D ("Recurse delete folder %p/%s", folder, folder->name);
 	f = &folder->folders;
 	while (*f) {
 		recurse_delete_folder (fs, *f);
@@ -497,10 +493,10 @@ delete_all_folders (CameraFilesystem *fs, const char *foldername,
 {
 	CameraFilesystemFolder	*folder;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Internally deleting "
+	GP_LOG_D ("Internally deleting "
 		"all folders from '%s'...", foldername);
 
-	CHECK_NULL (fs && foldername);
+	C_PARAMS (fs && foldername);
 	CC (context);
 	CA (foldername, context);
 
@@ -517,8 +513,8 @@ append_folder_one (
 ) {
 	CameraFilesystemFolder *f;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Append one folder %s", name);
-	CHECK_MEM (f = calloc(sizeof(CameraFilesystemFolder),1));
+	GP_LOG_D ("Append one folder %s", name);
+	C_MEM (f = calloc(1, sizeof(CameraFilesystemFolder)));
 	f->name = strdup (name);
 	if (!f->name) {
 		free (f);
@@ -543,7 +539,7 @@ append_to_folder (CameraFilesystemFolder *folder,
 	CameraFilesystemFolder	*f;
 	char	*s;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Append to folder %p/%s - %s", folder, folder->name, foldername);
+	GP_LOG_D ("Append to folder %p/%s - %s", folder, folder->name, foldername);
 	/* Handle multiple slashes, and slashes at the end */
 	while (foldername[0]=='/')
 		foldername++;
@@ -571,7 +567,7 @@ append_to_folder (CameraFilesystemFolder *folder,
 	/* Not found ... create new folder */
 	if (s) {
 		char *x;
-		CHECK_MEM (x = calloc ((s-foldername)+1,1));
+		C_MEM (x = calloc ((s-foldername)+1,1));
 		memcpy (x, foldername, (s-foldername));
 		x[s-foldername] = 0;
 		CR (append_folder_one (folder, x, newfolder));
@@ -588,9 +584,9 @@ append_folder (CameraFilesystem *fs,
 	CameraFilesystemFolder **newfolder,
 	GPContext *context
 ) {
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Appending folder %s...", folder);
-	CHECK_NULL (fs);
-	CHECK_NULL (folder);
+	GP_LOG_D ("Appending folder %s...", folder);
+	C_PARAMS (fs);
+	C_PARAMS (folder);
 	CC (context);
 	CA (folder, context);
 	return append_to_folder (fs->rootfolder, folder, newfolder);
@@ -601,21 +597,21 @@ append_file (CameraFilesystem *fs, CameraFilesystemFolder *folder, const char *n
 {
 	CameraFilesystemFile **new;
 
-	CHECK_NULL (fs && file);
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Appending file %s...", name);
+	C_PARAMS (fs && file);
+	GP_LOG_D ("Appending file %s...", name);
 
 	new = &folder->files;
 	while (*new) {
 		if (!strcmp((*new)->name, name)) {
-			gp_log (GP_LOG_ERROR, "gphoto2-filesystem", "File %s already exists!", name);
+			GP_LOG_E ("File %s already exists!", name);
 			return (GP_ERROR);
 		}
 		new = &((*new)->next);
 	}
 	/* new now points to the location of the last ->next pointer,
 	 * if we write to it, we set last->next */
-	CHECK_MEM ((*new) = calloc (sizeof (CameraFilesystemFile), 1));
-	(*new)->name = strdup (name);
+	C_MEM ((*new) = calloc (1, sizeof (CameraFilesystemFile)));
+	C_MEM ((*new)->name = strdup (name));
 	(*new)->info_dirty = 1;
 	(*new)->normal = file;
 	gp_file_ref (file);
@@ -634,14 +630,14 @@ append_file (CameraFilesystem *fs, CameraFilesystemFolder *folder, const char *n
 int
 gp_filesystem_reset (CameraFilesystem *fs)
 {
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "resetting filesystem");
+	GP_LOG_D ("resetting filesystem");
 	CR (gp_filesystem_lru_clear (fs));
 	CR (delete_all_folders (fs, "/", NULL));
 	if (fs->rootfolder) {
 		fs->rootfolder->files_dirty = 1;
 		fs->rootfolder->folders_dirty = 1;
 	} else {
-		gp_log (GP_LOG_ERROR,"gphoto2-filesys", "root folder is gone?");
+		GP_LOG_E ("root folder is gone?");
 	}
 	return (GP_OK);
 }
@@ -658,11 +654,9 @@ gp_filesystem_reset (CameraFilesystem *fs)
 int
 gp_filesystem_new (CameraFilesystem **fs)
 {
-	CHECK_NULL (fs);
+	C_PARAMS (fs);
 
-	CHECK_MEM (*fs = malloc (sizeof (CameraFilesystem)));
-
-	memset(*fs,0,sizeof(CameraFilesystem));
+	C_MEM (*fs = calloc (1, sizeof (CameraFilesystem)));
 
 	(*fs)->rootfolder = calloc (sizeof (CameraFilesystemFolder), 1);
 	if (!(*fs)->rootfolder) {
@@ -722,9 +716,9 @@ internal_append (CameraFilesystem *fs, CameraFilesystemFolder *f,
 {
 	CameraFilesystemFile **new;
 
-	CHECK_NULL (fs && f);
+	C_PARAMS (fs && f);
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Internal append %s to folder %s", filename, f->name);
+	GP_LOG_D ("Internal append %s to folder %s", filename, f->name);
 	/* Check folder for existence, if not, create it. */
 	new = &f->files;
 	while (*new) {
@@ -734,7 +728,7 @@ internal_append (CameraFilesystem *fs, CameraFilesystemFolder *f,
 	if (*new)
 		return (GP_ERROR_FILE_EXISTS);
 
-	CHECK_MEM ((*new) = calloc (sizeof (CameraFilesystemFile), 1))
+	C_MEM ((*new) = calloc (sizeof (CameraFilesystemFile), 1));
 	(*new)->name = strdup (filename);
 	if (!(*new)->name) {
 		free (*new);
@@ -752,11 +746,11 @@ gp_filesystem_append (CameraFilesystem *fs, const char *folder,
 	CameraFilesystemFolder *f;
 	int ret;
 
-	CHECK_NULL (fs && folder);
+	C_PARAMS (fs && folder);
 	CC (context);
 	CA (folder, context);
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Append %s/%s to filesystem", folder, filename);
+	GP_LOG_D ("Append %s/%s to filesystem", folder, filename);
 	/* Check folder for existence, if not, create it. */
 	f = lookup_folder (fs, fs->rootfolder, folder, context);
 	if (!f)
@@ -783,11 +777,11 @@ recursive_fs_dump (CameraFilesystemFolder *folder, int depth) {
 	CameraFilesystemFolder	*f;
 	CameraFilesystemFile	*xfile;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesys", "%*sFolder %s", depth, " ", folder->name);
+	GP_LOG_D ("%*sFolder %s", depth, " ", folder->name);
 
 	xfile = folder->files;
 	while (xfile) {
-		gp_log (GP_LOG_DEBUG, "gphoto2-filesys", "%*s    %s", depth, " ", xfile->name);
+		GP_LOG_D ("%*s    %s", depth, " ", xfile->name);
 		xfile = xfile->next;
 	}
 	
@@ -807,7 +801,7 @@ recursive_fs_dump (CameraFilesystemFolder *folder, int depth) {
 int
 gp_filesystem_dump (CameraFilesystem *fs)
 {
-	GP_DEBUG("Dumping Filesystem:");
+	GP_LOG_D ("Dumping Filesystem:");
 	recursive_fs_dump (fs->rootfolder, 0);
 	return (GP_OK);
 }
@@ -864,7 +858,7 @@ gp_filesystem_delete_all_one_by_one (CameraFilesystem *fs, const char *folder,
 	int count, x;
 	const char *name;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Deleting all 1 by 1 from %s", folder);
+	GP_LOG_D ("Deleting all 1 by 1 from %s", folder);
 	CR (gp_list_new (&list));
 	CL (gp_filesystem_list_files (fs, folder, list, context), list);
 	CL (count = gp_list_count (list), list);
@@ -897,11 +891,11 @@ gp_filesystem_delete_all (CameraFilesystem *fs, const char *folder,
 	int r;
 	CameraFilesystemFolder *f;
 
-	CHECK_NULL (fs && folder);
+	C_PARAMS (fs && folder);
 	CC (context);
 	CA (folder, context);
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Deleting all from %s", folder);
+	GP_LOG_D ("Deleting all from %s", folder);
 	/* Make sure this folder exists */
 	f = lookup_folder (fs, fs->rootfolder, folder, context);
 	if (!f) return (GP_ERROR_DIRECTORY_NOT_FOUND);
@@ -920,7 +914,7 @@ gp_filesystem_delete_all (CameraFilesystem *fs, const char *folder,
 	 */
 	r = fs->delete_all_func (fs, folder, fs->data, context);
 	if (r < 0) {
-		gp_log (GP_LOG_DEBUG, "gphoto2-filesystem",
+		GP_LOG_D (
 			"delete_all failed (%s). Falling back to "
 			"deletion one-by-one.",
 			gp_result_as_string (r));
@@ -960,9 +954,9 @@ gp_filesystem_list_files (CameraFilesystem *fs, const char *folder,
 	CameraFilesystemFolder	*f;
 	CameraFilesystemFile	*file;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Listing files in %s", folder);
+	GP_LOG_D ("Listing files in %s", folder);
 
-	CHECK_NULL (fs && list && folder);
+	C_PARAMS (fs && list && folder);
 	CC (context);
 	CA (folder, context);
 
@@ -974,8 +968,7 @@ gp_filesystem_list_files (CameraFilesystem *fs, const char *folder,
 
 	/* If the folder is dirty, delete the contents and query the camera */
 	if (f->files_dirty && fs->file_list_func) {
-		gp_log (GP_LOG_DEBUG, "gphoto2-filesystem",
-			"Querying folder %s...", folder);
+		GP_LOG_D ("Querying folder %s...", folder);
 		CR (delete_all_files (fs, f));
 
 		/* set it to non-dirty now, so we do not recurse via _append. */
@@ -986,8 +979,7 @@ gp_filesystem_list_files (CameraFilesystem *fs, const char *folder,
 		CR (count = gp_list_count (list));
 		for (y = 0; y < count; y++) {
 			CR (gp_list_get_name (list, y, &name));
-			gp_log (GP_LOG_DEBUG, "gphoto2-filesystem",
-					 "Added '%s'", name);
+			GP_LOG_D ("Added '%s'", name);
 			CR (internal_append (fs, f, name, context));
 		}
 		gp_list_reset (list);
@@ -997,7 +989,7 @@ gp_filesystem_list_files (CameraFilesystem *fs, const char *folder,
 
 	file = f->files;
 	while (file) {
-		gp_log (GP_LOG_DEBUG, "filesys",
+		GP_LOG_D (
 			"Listed '%s'", file->name);
 		CR (gp_list_append (list, file->name, NULL));
 		file = file->next;
@@ -1027,9 +1019,9 @@ gp_filesystem_list_folders (CameraFilesystem *fs, const char *folder,
 	const char *name;
 	CameraFilesystemFolder	*f, *new;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Listing folders in %s", folder);
+	GP_LOG_D ("Listing folders in %s", folder);
 
-	CHECK_NULL (fs && folder && list);
+	C_PARAMS (fs && folder && list);
 	CC (context);
 	CA (folder, context);
 
@@ -1042,7 +1034,7 @@ gp_filesystem_list_folders (CameraFilesystem *fs, const char *folder,
 
 	/* If the folder is dirty, query the contents. */
 	if (f->folders_dirty && fs->folder_list_func) {
-		gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "... is dirty, getting from camera");
+		GP_LOG_D ("... is dirty, getting from camera");
 		CR (fs->folder_list_func (fs, folder, list,
 					  fs->data, context));
 		CR (delete_all_folders (fs, folder, context));
@@ -1063,8 +1055,7 @@ gp_filesystem_list_folders (CameraFilesystem *fs, const char *folder,
 	}
 	/* The folder is clean now */
 	f->folders_dirty = 0;
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Folder %s contains %i "
-		"subfolders.", folder, gp_list_count (list));
+	GP_LOG_D ("Folder %s contains %i subfolders.", folder, gp_list_count (list));
 	return (GP_OK);
 }
 
@@ -1086,7 +1077,7 @@ gp_filesystem_count (CameraFilesystem *fs, const char *folder,
 	CameraFilesystemFolder	*f;
 	CameraFilesystemFile	*file;
 
-	CHECK_NULL (fs && folder);
+	C_PARAMS (fs && folder);
 	CC (context);
 	CA (folder, context);
 
@@ -1122,7 +1113,7 @@ gp_filesystem_delete_file (CameraFilesystem *fs, const char *folder,
 	CameraFilesystemFolder	*f;
 	CameraFilesystemFile	*file;
 
-	CHECK_NULL (fs && folder && filename);
+	C_PARAMS (fs && folder && filename);
 	CC (context);
 	CA (folder, context);
 
@@ -1137,8 +1128,8 @@ gp_filesystem_delete_file (CameraFilesystem *fs, const char *folder,
 	/* Search the folder and the file */
 	CR (lookup_folder_file (fs, folder, filename, &f, &file, context));
 
-	gp_context_status (context, _("Deleting '%s' from folder '%s'..."),
-			   filename, folder);
+	GP_LOG_D ("Deleting '%s' from folder '%s'...", filename, folder);
+
 	/* Delete the file */
 	CR (fs->delete_file_func (fs, folder, filename,
 				  fs->data, context));
@@ -1166,7 +1157,7 @@ gp_filesystem_delete_file_noop (CameraFilesystem *fs, const char *folder,
 	CameraFilesystemFolder	*f;
 	CameraFilesystemFile	*file;
 
-	CHECK_NULL (fs && folder && filename);
+	C_PARAMS (fs && folder && filename);
 	CC (context);
 	CA (folder, context);
 	/* Search the folder and the file */
@@ -1191,7 +1182,7 @@ gp_filesystem_make_dir (CameraFilesystem *fs, const char *folder,
 {
 	CameraFilesystemFolder	*f;
 
-	CHECK_NULL (fs && folder && name);
+	C_PARAMS (fs && folder && name);
 	CC (context);
 	CA (folder, context);
 
@@ -1226,7 +1217,7 @@ gp_filesystem_remove_dir (CameraFilesystem *fs, const char *folder,
 	CameraFilesystemFolder *f;
 	CameraFilesystemFolder **prev;
 
-	CHECK_NULL (fs && folder && name);
+	C_PARAMS (fs && folder && name);
 	CC (context);
 	CA (folder, context);
 
@@ -1247,13 +1238,13 @@ gp_filesystem_remove_dir (CameraFilesystem *fs, const char *folder,
 		 * The owning folder is dirty. List the folders in it 
 		 * to make it clean.
 		 */
-		gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Folder %s is dirty. "
+		GP_LOG_D ("Folder %s is dirty. "
 			"Listing folders in there to make folder clean...", folder);
 		ret = gp_list_new (&list);
 		if (ret == GP_OK) {
 			ret = gp_filesystem_list_folders (fs, folder, list, context);
 			gp_list_free (list);
-			gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Done making folder %s clean...", folder);
+			GP_LOG_D ("Done making folder %s clean...", folder);
 		}
 	}
 	prev = &(f->folders);
@@ -1303,7 +1294,7 @@ gp_filesystem_put_file (CameraFilesystem *fs,
 	CameraFilesystemFolder	*f;
 	int ret;
 
-	CHECK_NULL (fs && folder && file);
+	C_PARAMS (fs && folder && file);
 	CC (context);
 	CA (folder, context);
 
@@ -1347,7 +1338,7 @@ gp_filesystem_name (CameraFilesystem *fs, const char *folder, int filenumber,
 	CameraFilesystemFolder	*f;
 	CameraFilesystemFile	*file;
 	int count;
-	CHECK_NULL (fs && folder);
+	C_PARAMS (fs && folder);
 	CC (context);
 	CA (folder, context);
 
@@ -1395,7 +1386,7 @@ gp_filesystem_number (CameraFilesystem *fs, const char *folder,
 	CameraList *list;
 	int num;
 
-	CHECK_NULL (fs && folder && filename);
+	C_PARAMS (fs && folder && filename);
 	CC (context);
 	CA (folder, context);
 
@@ -1433,10 +1424,9 @@ gp_filesystem_scan (CameraFilesystem *fs, const char *folder,
 	const char *name;
 	char path[128];
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-filesystem", "Scanning %s for %s...",
-		folder, filename);
+	GP_LOG_D ("Scanning %s for %s...", folder, filename);
 
-	CHECK_NULL (fs && folder && filename);
+	C_PARAMS (fs && folder && filename);
 	CC (context);
 	CA (folder, context);
 
@@ -1487,7 +1477,7 @@ recursive_folder_scan (
 		char *xfolder;
 		ret = recursive_folder_scan (f, lookforfile, &xfolder);
 		if (ret == GP_OK) {
-			(*foldername) = malloc (strlen (folder->name) + 1 + strlen (xfolder) + 1);
+			C_MEM ((*foldername) = malloc (strlen (folder->name) + 1 + strlen (xfolder) + 1));
 			strcpy ((*foldername),folder->name);
 			strcat ((*foldername),"/");
 			strcat ((*foldername),xfolder);
@@ -1524,7 +1514,7 @@ gp_filesystem_get_folder (CameraFilesystem *fs, const char *filename,
 {
 	int ret;
 
-	CHECK_NULL (fs && filename && folder);
+	C_PARAMS (fs && filename && folder);
 	CC (context);
 
 	CR (gp_filesystem_scan (fs, "/", filename, context));
@@ -1544,11 +1534,11 @@ gp_filesystem_get_file_impl (CameraFilesystem *fs, const char *folder,
 	CameraFilesystemFile	*xfile;
 	int			ret;
 
-	CHECK_NULL (fs && folder && file && filename);
+	C_PARAMS (fs && folder && file && filename);
 	CC (context);
 	CA (folder, context);
 
-	GP_DEBUG ("Getting file '%s' from folder '%s' (type %i)...",
+	GP_LOG_D ("Getting file '%s' from folder '%s' (type %i)...",
 		  filename, folder, type);
 
 	CR (gp_file_set_name (file, filename));
@@ -1593,12 +1583,12 @@ gp_filesystem_get_file_impl (CameraFilesystem *fs, const char *folder,
 		return (GP_ERROR);
 	}
 	if (ret == GP_OK) {
-		gp_log (GP_LOG_DEBUG, "lru", "LRU cache used for type %d!", type);
+		GP_LOG_D ("LRU cache used for type %d!", type);
 		return GP_OK;
 	}
 
-	gp_context_status (context, _("Downloading '%s' from folder '%s'..."),
-			   filename, folder);
+	GP_LOG_D ("Downloading '%s' from folder '%s'...", filename, folder);
+
 	CR (fs->get_file_func (fs, folder, filename, type, file,
 			       fs->data, context));
 
@@ -1663,8 +1653,7 @@ gp_filesystem_get_file (CameraFilesystem *fs, const char *folder,
 		 * cameras hide the thumbnail in EXIF data. Check it out.
 		 */
 #ifdef HAVE_LIBEXIF
-		GP_DEBUG ("Getting previews is not supported. Trying "
-			  "EXIF data...");
+		GP_LOG_D ("Getting previews is not supported. Trying EXIF data...");
 		CR (gp_file_new (&efile));
 		CU (gp_filesystem_get_file_impl (fs, folder, filename,
 				GP_FILE_TYPE_EXIF, efile, context), efile);
@@ -1672,12 +1661,11 @@ gp_filesystem_get_file (CameraFilesystem *fs, const char *folder,
 		ed = exif_data_new_from_data ((unsigned char*)data, size);
 		gp_file_unref (efile);
 		if (!ed) {
-			GP_DEBUG ("Could not parse EXIF data of "
-				"'%s' in folder '%s'.", filename, folder);
+			GP_LOG_E ("Could not parse EXIF data of '%s' in folder '%s'.", filename, folder);
 			return (GP_ERROR_CORRUPTED_DATA);
 		}
 		if (!ed->data) {
-			GP_DEBUG ("EXIF data does not contain a thumbnail.");
+			GP_LOG_E ("EXIF data does not contain a thumbnail.");
 			exif_data_unref (ed);
 			return (r);
 		}
@@ -1699,7 +1687,7 @@ gp_filesystem_get_file (CameraFilesystem *fs, const char *folder,
 		CR (gp_filesystem_set_file_noop (fs, folder, filename, GP_FILE_TYPE_PREVIEW, file, context));
 		CR (gp_file_adjust_name_for_mime_type (file));
 #else
-		GP_DEBUG ("Getting previews is not supported and "
+		GP_LOG_D ("Getting previews is not supported and "
 			"libgphoto2 has been compiled without exif "
 			"support. ");
 		return (r);
@@ -1712,8 +1700,7 @@ gp_filesystem_get_file (CameraFilesystem *fs, const char *folder,
 		 * out.
 		 */
 #ifdef HAVE_LIBEXIF
-		GP_DEBUG ("Getting EXIF data is not supported. Trying "
-			  "thumbnail...");
+		GP_LOG_D ("Getting EXIF data is not supported. Trying thumbnail...");
 		CR (gp_file_new (&efile));
 		CU (gp_filesystem_get_file_impl (fs, folder, filename,
 				GP_FILE_TYPE_PREVIEW, efile, context), efile);
@@ -1721,7 +1708,7 @@ gp_filesystem_get_file (CameraFilesystem *fs, const char *folder,
 		ed = exif_data_new_from_data ((unsigned char*)data, size);
 		gp_file_unref (efile);
 		if (!ed) {
-			GP_DEBUG ("Could not parse EXIF data of thumbnail of "
+			GP_LOG_D ("Could not parse EXIF data of thumbnail of "
 				"'%s' in folder '%s'.", filename, folder);
 			return (GP_ERROR_CORRUPTED_DATA);
 		}
@@ -1737,12 +1724,12 @@ gp_filesystem_get_file (CameraFilesystem *fs, const char *folder,
 		CR (gp_filesystem_set_file_noop (fs, folder, filename, GP_FILE_TYPE_EXIF, file, context));
 		CR (gp_file_adjust_name_for_mime_type (file));
 #else
-		GP_DEBUG ("Getting EXIF data is not supported and libgphoto2 "
+		GP_LOG_D ("Getting EXIF data is not supported and libgphoto2 "
 			"has been compiled without EXIF support.");
 		return (r);
 #endif
 	} else if (r < 0) {
-		GP_DEBUG ("Download of '%s' from '%s' (type %i) failed. "
+		GP_LOG_D ("Download of '%s' from '%s' (type %i) failed. "
 			"Reason: '%s'", filename, folder, type,
 			gp_result_as_string (r));
 		return (r);
@@ -1784,7 +1771,7 @@ gp_filesystem_read_file (CameraFilesystem *fs, const char *folder,
 	unsigned long	xsize;
 	CameraFile	*file;
 
-	CHECK_NULL (fs && folder && filename && buf && size);
+	C_PARAMS (fs && folder && filename && buf && size);
 	CC (context);
 	CA (folder, context);
 
@@ -1833,7 +1820,7 @@ gp_filesystem_set_funcs	(CameraFilesystem *fs,
 			 CameraFilesystemFuncs *funcs,
 			 void *data)
 {
-	CHECK_NULL (fs);
+	C_PARAMS (fs);
 
 	fs->get_info_func	= funcs->get_info_func;
 	fs->set_info_func	= funcs->set_info_func;
@@ -1872,11 +1859,11 @@ gp_filesystem_get_info (CameraFilesystem *fs, const char *folder,
 	time_t t;
 #endif
 
-	CHECK_NULL (fs && folder && filename && info);
+	C_PARAMS (fs && folder && filename && info);
 	CC (context);
 	CA (folder, context);
 
-	GP_DEBUG ("Getting information about '%s' in '%s'...", filename,
+	GP_LOG_D ("Getting information about '%s' in '%s'...", filename,
 		  folder);
 
 	if (!fs->get_info_func) {
@@ -1902,7 +1889,7 @@ gp_filesystem_get_info (CameraFilesystem *fs, const char *folder,
 	 */
 #ifdef HAVE_LIBEXIF
 	if (!(file->info.file.fields & GP_FILE_INFO_MTIME)) {
-		GP_DEBUG ("Did not get mtime. Trying EXIF information...");
+		GP_LOG_D ("Did not get mtime. Trying EXIF information...");
 		t = gp_filesystem_get_exif_mtime (fs, folder, filename);
 		if (t) {
 			file->info.file.mtime = t;
@@ -1920,10 +1907,10 @@ gp_filesystem_lru_clear (CameraFilesystem *fs)
 	int n = 0;
 	CameraFilesystemFile *ptr, *prev;
 
-	GP_DEBUG ("Clearing fscache LRU list...");
+	GP_LOG_D ("Clearing fscache LRU list...");
 
 	if (fs->lru_first == NULL) {
-		GP_DEBUG ("fscache LRU list already empty");
+		GP_LOG_D ("fscache LRU list already empty");
 		return (GP_OK);
 	}
 
@@ -1931,7 +1918,7 @@ gp_filesystem_lru_clear (CameraFilesystem *fs)
 	while (ptr != NULL) {
 		n++;
 		if (ptr->lru_prev != prev) {
-			GP_DEBUG ("fscache LRU list corrupted (%i)", n);
+			GP_LOG_D ("fscache LRU list corrupted (%i)", n);
 			return (GP_ERROR);
 		}
 		prev = ptr;
@@ -1945,7 +1932,7 @@ gp_filesystem_lru_clear (CameraFilesystem *fs)
 	fs->lru_last = NULL;
 	fs->lru_size = 0;
 
-	GP_DEBUG ("fscache LRU list cleared (removed %i items)", n);
+	GP_LOG_D ("fscache LRU list cleared (removed %i items)", n);
 
 	return (GP_OK);
 }
@@ -1994,11 +1981,11 @@ gp_filesystem_lru_free (CameraFilesystem *fs)
 	CameraFilesystemFile *ptr;
 	unsigned long int size;
 
-	CHECK_NULL (fs && fs->lru_first);
+	C_PARAMS (fs && fs->lru_first);
 
 	ptr = fs->lru_first;
 
-	GP_DEBUG ("Freeing cached data for file '%s'...", ptr->name);
+	GP_LOG_D ("Freeing cached data for file '%s'...", ptr->name);
 
 	/* Remove it from the list. */
 	fs->lru_first = ptr->lru_next;
@@ -2059,7 +2046,7 @@ gp_filesystem_lru_update (CameraFilesystem *fs,
 	int x;
 	char cached_images[1024];
 
-	CHECK_NULL (fs && folder && file);
+	C_PARAMS (fs && folder && file);
 
 	CR (gp_file_get_data_and_size (file, NULL, &size));
 
@@ -2094,7 +2081,7 @@ gp_filesystem_lru_update (CameraFilesystem *fs,
 		x = gp_filesystem_lru_count (fs);
 	}
 
-	GP_DEBUG ("Adding file '%s' from folder '%s' to the fscache LRU list "
+	GP_LOG_D ("Adding file '%s' from folder '%s' to the fscache LRU list "
 		  "(type %i)...", filename, folder, type);
 
 	/* Search folder and file */
@@ -2154,7 +2141,7 @@ gp_filesystem_lru_update (CameraFilesystem *fs,
 	CR( gp_file_get_data_and_size (file, NULL, &size));
 	fs->lru_size += size;
 
-	GP_DEBUG ("File '%s' from folder '%s' added in fscache LRU list.",
+	GP_LOG_D ("File '%s' from folder '%s' added in fscache LRU list.",
 		  filename, folder);
 
 	return (GP_OK);
@@ -2166,10 +2153,10 @@ gp_filesystem_lru_check (CameraFilesystem *fs)
 	int n = 0;
 	CameraFilesystemFile *ptr, *prev;
 
-	GP_DEBUG ("Checking fscache LRU list integrity...");
+	GP_LOG_D ("Checking fscache LRU list integrity...");
 
 	if (fs->lru_first == NULL) {
-		GP_DEBUG ("fscache LRU list empty");
+		GP_LOG_D ("fscache LRU list empty");
 		return (GP_OK);
 	}
 
@@ -2177,14 +2164,14 @@ gp_filesystem_lru_check (CameraFilesystem *fs)
 	while (ptr != NULL) {
 		n++;
 		if (ptr->lru_prev != prev) {
-			GP_DEBUG ("fscache LRU list corrupted (%i)", n);
+			GP_LOG_E ("fscache LRU list corrupted (%i)", n);
 			return (GP_ERROR);
 		}
 		prev = ptr;
 		ptr = ptr->lru_next;
 	}
 
-	GP_DEBUG ("fscache LRU list ok with %i items (%ld bytes)", n,
+	GP_LOG_D ("fscache LRU list ok with %i items (%ld bytes)", n,
 		  fs->lru_size);
 
 	return (GP_OK);
@@ -2216,11 +2203,11 @@ gp_filesystem_set_file_noop (CameraFilesystem *fs,
 	int r;
 	time_t t;
 
-	CHECK_NULL (fs && folder && file);
+	C_PARAMS (fs && folder && file);
 	CC (context);
 	CA (folder, context);
 
-	GP_DEBUG ("Adding file '%s' to folder '%s' (type %i)...",
+	GP_LOG_D ("Adding file '%s' to folder '%s' (type %i)...",
 		  filename, folder, type);
 
 	/* Search folder and file */
@@ -2286,8 +2273,7 @@ gp_filesystem_set_file_noop (CameraFilesystem *fs,
 	 */
 	CR (gp_file_get_mtime (file, &t));
 	if (!t) {
-		GP_DEBUG ("File does not contain mtime. Trying "
-			  "information on the file...");
+		GP_LOG_D ("File does not contain mtime. Trying information on the file...");
 		r = gp_filesystem_get_info (fs, folder, filename, &info, NULL);
 		if ((r == GP_OK) && (info.file.fields & GP_FILE_INFO_MTIME))
 			t = info.file.mtime;
@@ -2303,7 +2289,7 @@ gp_filesystem_set_file_noop (CameraFilesystem *fs,
 		unsigned long int size;
 		const char *data;
 
-		GP_DEBUG ("Searching data for mtime...");
+		GP_LOG_D ("Searching data for mtime...");
 		CR (gp_file_get_data_and_size (file, NULL, &size));
 		if (size < 32*1024*1024) { /* just assume stuff above 32MB is not EXIF capable */
 			CR (gp_file_get_data_and_size (file, &data, &size));
@@ -2315,7 +2301,7 @@ gp_filesystem_set_file_noop (CameraFilesystem *fs,
 	 * GP_FILE_TYPE_EXIF that includes information on the mtime.
 	 */
 	if (!t) {
-		GP_DEBUG ("Trying EXIF information...");
+		GP_LOG_D ("Trying EXIF information...");
 		t = gp_filesystem_get_exif_mtime (fs, folder, filename);
 	}
 #endif
@@ -2348,7 +2334,7 @@ gp_filesystem_set_info_noop (CameraFilesystem *fs,
 	CameraFilesystemFolder	*f;
 	CameraFilesystemFile	*xfile;
 
-	CHECK_NULL (fs && folder);
+	C_PARAMS (fs && folder);
 	CC (context);
 	CA (folder, context);
 
@@ -2381,7 +2367,7 @@ gp_filesystem_set_info (CameraFilesystem *fs, const char *folder,
 	CameraFilesystemFolder	*f;
 	CameraFilesystemFile	*xfile;
 
-	CHECK_NULL (fs && folder && filename);
+	C_PARAMS (fs && folder && filename);
 	CC (context);
 	CA (folder, context);
 
@@ -2461,7 +2447,7 @@ gp_filesystem_get_storageinfo (
 	int *nrofstorageinfos,
 	GPContext *context
 ) {
-	CHECK_NULL (fs && storageinfo && nrofstorageinfos);
+	C_PARAMS (fs && storageinfo && nrofstorageinfos);
 	CC (context);
 
 	if (!fs->storage_info_func) {

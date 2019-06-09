@@ -3,7 +3,7 @@
  *
  * Written 1999 by Wolfgang G. Reissnegger and Werner Almesberger
  * Additions 2000 by Philippe Marzouk and Edouard Lafargue
- * USB support, 2000, by Mikael Nyström
+ * USB support, 2000, by Mikael Nystroem
  *
  * This file includes both USB and serial support for the cameras
  * manufactured by Canon. These comprise all (or at least almost all)
@@ -1686,10 +1686,9 @@ canon_int_set_file_attributes (Camera *camera, const char *file, const char *dir
                 return GP_ERROR_CORRUPTED_DATA;
         }
 
-        gp_log (GP_LOG_DATA, "canon/canon.c",
-                "canon_int_set_file_attributes: returned four bytes as expected, "
-                "we should check if they indicate error or not. Returned data :");
-        gp_log_data ("canon", (char *)msg, 4);
+        GP_LOG_DATA ((char *)msg, 4,
+                     "canon_int_set_file_attributes: returned four bytes as expected, "
+                     "we should check if they indicate error or not. Returned data:");
 
         return GP_OK;
 }
@@ -2544,7 +2543,6 @@ int
 canon_int_set_owner_name (Camera *camera, const char *name, GPContext *context)
 {
         unsigned char *msg;
-        unsigned char payload[4];
         unsigned int len;
 
         GP_DEBUG ("canon_int_set_owner_name() called, name = '%s'", name);
@@ -2561,7 +2559,6 @@ canon_int_set_owner_name (Camera *camera, const char *name, GPContext *context)
                         if ( camera->pl->md->model == CANON_CLASS_6 ) {
                                 msg = canon_usb_dialogue (camera, CANON_USB_FUNCTION_CAMERA_CHOWN_2,
                                                           &len, (unsigned char *)name, strlen (name) + 1);
-                                htole32a ( payload, 0x0f );
                         }
                         else
                                 msg = canon_usb_dialogue (camera, CANON_USB_FUNCTION_CAMERA_CHOWN,
@@ -3294,11 +3291,9 @@ canon_int_list_directory (Camera *camera, const char *folder, CameraList *list,
                 }
 
                 /* 10 bytes of attributes, size and date, a name and a NULL terminating byte */
-                /* don't use GP_DEBUG since we log this with GP_LOG_DATA */
-                gp_log (GP_LOG_DATA, "canon/canon.c",
-                        "canon_int_list_directory: dirent determined to be %li=0x%lx bytes :",
-                        (long)dirent_ent_size, (long)dirent_ent_size);
-                gp_log_data ("canon", (char *)pos, dirent_ent_size);
+                GP_LOG_DATA ((char *)pos, dirent_ent_size,
+                             "canon_int_list_directory: dirent determined to be %li=0x%lx bytes :",
+                             (long)dirent_ent_size, (long)dirent_ent_size);
                 if (dirent_name_len) {
                         /* OK, this directory entry has a name in it. */
 
@@ -3860,11 +3855,9 @@ canon_int_get_info_func (Camera *camera, const char *folder,
                 }
 
                 /* 10 bytes of attributes, size and date, a name and a NULL terminating byte */
-                /* don't use GP_DEBUG since we log this with GP_LOG_DATA */
-                gp_log (GP_LOG_DATA, "canon/canon.c",
-                        "canon_int_get_info_func: dirent determined to be %li=0x%lx bytes :",
-                        (long)dirent_ent_size, (long)dirent_ent_size);
-                gp_log_data ("canon", (char *)pos, dirent_ent_size);
+                GP_LOG_DATA ((char *)pos, dirent_ent_size,
+                             "canon_int_get_info_func: dirent determined to be %li=0x%lx bytes:",
+                             (long)dirent_ent_size, (long)dirent_ent_size);
                 if (dirent_name_len) {
                         /* OK, this directory entry has a name in it. */
 

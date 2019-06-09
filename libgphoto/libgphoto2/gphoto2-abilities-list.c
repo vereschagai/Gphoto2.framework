@@ -56,14 +56,7 @@
 #endif
 
 /** \internal */
-#define GP_MODULE "gphoto2-abilities-list"
-
-/** \internal */
-#define CHECK_NULL(r)        {if (!(r)) return (GP_ERROR_BAD_PARAMETERS);}
-/** \internal */
 #define CHECK_RESULT(result) {int r = (result); if (r < 0) return (r);}
-/** \internal */
-#define CHECK_MEM(m)         {if (!(m)) return (GP_ERROR_NO_MEMORY);}
 
 /** \internal */
 struct _CameraAbilitiesList {
@@ -106,7 +99,7 @@ gp_message_codeset (const char *codeset)
 int
 gp_abilities_list_new (CameraAbilitiesList **list)
 {
-	CHECK_NULL (list);
+	C_PARAMS (list);
 
 	/*
 	 * We do this here because everybody needs to call this function
@@ -116,8 +109,7 @@ gp_abilities_list_new (CameraAbilitiesList **list)
 	 */
 	bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
 
-	CHECK_MEM (*list = malloc (sizeof (CameraAbilitiesList)));
-	memset (*list, 0, sizeof (CameraAbilitiesList));
+	C_MEM (*list = calloc (1, sizeof (CameraAbilitiesList)));
 
 	return (GP_OK);
 }
@@ -131,7 +123,7 @@ gp_abilities_list_new (CameraAbilitiesList **list)
 int
 gp_abilities_list_free (CameraAbilitiesList *list)
 {
-	CHECK_NULL (list);
+	C_PARAMS (list);
 
 	CHECK_RESULT (gp_abilities_list_reset (list));
 
@@ -153,8 +145,7 @@ foreach_func (const char *filename, lt_ptr data)
 	foreach_data_t *fd = data;
 	CameraList *list = fd->list;
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-abilities-list",
-		"Found '%s'.", filename);
+	GP_LOG_D ("Found '%s'.", filename);
 	fd->result = gp_list_append (list, filename, NULL);
 
 	return ((fd->result == GP_OK)?0:1);
@@ -175,10 +166,9 @@ gp_abilities_list_load_dir (CameraAbilitiesList *list, const char *dir,
 	int count;
 	lt_dlhandle lh;
 
-	CHECK_NULL (list && dir);
+	C_PARAMS (list && dir);
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-abilities-list",
-		"Using ltdl to load camera libraries from '%s'...", dir);
+	GP_LOG_D ("Using ltdl to load camera libraries from '%s'...", dir);
 	CHECK_RESULT (gp_list_new (&flist));
 	ret = gp_list_reset (flist);
 	if (ret < GP_OK) {
@@ -199,8 +189,7 @@ gp_abilities_list_load_dir (CameraAbilitiesList *list, const char *dir,
 		lt_dlexit ();
 		if (ret != 0) {
 			gp_list_free (flist);
-			gp_log (GP_LOG_ERROR, "gp-abilities-list", 
-				"Internal error looking for camlibs (%d)", ret);
+			GP_LOG_E ("Internal error looking for camlibs (%d)", ret);
 			gp_context_error (context,
 					  _("Internal error looking for camlibs. "
 					    "(path names too long?)"));
@@ -212,8 +201,7 @@ gp_abilities_list_load_dir (CameraAbilitiesList *list, const char *dir,
 		gp_list_free (flist);
 		return ret;
 	}
-	gp_log (GP_LOG_DEBUG, "gp-abilities-list", "Found %i "
-		"camera drivers.", count);
+	GP_LOG_D ("Found %i camera drivers.", count);
 	lt_dlinit ();
 	p = gp_context_progress_start (context, count,
 		_("Loading camera drivers from '%s'..."), dir);
@@ -225,8 +213,7 @@ gp_abilities_list_load_dir (CameraAbilitiesList *list, const char *dir,
 		}
 		lh = lt_dlopenext (filename);
 		if (!lh) {
-			gp_log (GP_LOG_DEBUG, "gphoto2-abilities-list",
-				"Failed to load '%s': %s.", filename,
+			GP_LOG_D ("Failed to load '%s': %s.", filename,
 				lt_dlerror ());
 			continue;
 		}
@@ -234,8 +221,7 @@ gp_abilities_list_load_dir (CameraAbilitiesList *list, const char *dir,
 		/* camera_id */
 		id = lt_dlsym (lh, "camera_id");
 		if (!id) {
-			gp_log (GP_LOG_DEBUG, "gphoto2-abilities-list",
-				"Library '%s' does not seem to "
+			GP_LOG_D ("Library '%s' does not seem to "
 				"contain a camera_id function: %s",
 				filename, lt_dlerror ());
 			lt_dlclose (lh);
@@ -258,8 +244,7 @@ gp_abilities_list_load_dir (CameraAbilitiesList *list, const char *dir,
 		/* camera_abilities */
 		ab = lt_dlsym (lh, "camera_abilities");
 		if (!ab) {
-			gp_log (GP_LOG_DEBUG, "gphoto2-abilities-list",
-				"Library '%s' does not seem to "
+			GP_LOG_D ("Library '%s' does not seem to "
 				"contain a camera_abilities function: "
 				"%s", filename, lt_dlerror ());
 			lt_dlclose (lh);
@@ -277,7 +262,10 @@ gp_abilities_list_load_dir (CameraAbilitiesList *list, const char *dir,
 			continue;
 		}
 
+		/* do not free the library in valgrind mode */
+#if !defined(VALGRIND) 
 		lt_dlclose (lh);
+#endif
 
 		new_count = gp_abilities_list_count (list);
 		if (new_count < 0)
@@ -345,7 +333,6 @@ static const char *gp_camlibs_dir()
     return camlibs_dir;
 }
 
-
 /**
  * \brief Scans the system for camera drivers.
  *
@@ -361,7 +348,7 @@ gp_abilities_list_load (CameraAbilitiesList *list, GPContext *context)
 {
 	const char *camlib_env = getenv(CAMLIBDIR_ENV);
 	const char *camlibs = (camlib_env != NULL)?camlib_env:gp_camlibs_dir();
-	CHECK_NULL (list);
+	C_PARAMS (list);
 
 	CHECK_RESULT (gp_abilities_list_load_dir (list, camlibs, context));
 	CHECK_RESULT (gp_abilities_list_sort (list));
@@ -379,8 +366,7 @@ gp_abilities_list_detect_usb (CameraAbilitiesList *list,
 	CHECK_RESULT (count = gp_abilities_list_count (list));
 
 	/* Detect USB cameras */
-	gp_log (GP_LOG_VERBOSE, __FILE__,
-		"Auto-detecting USB cameras...");
+	GP_LOG_D ("Auto-detecting USB cameras...");
 	*ability = -1;
 	for (i = 0; i < count; i++) {
 		int v, p, c, s;
@@ -393,10 +379,8 @@ gp_abilities_list_detect_usb (CameraAbilitiesList *list,
 		if (v) {
 			res = gp_port_usb_find_device(port, v, p);
 			if (res == GP_OK) {
-				gp_log(GP_LOG_DEBUG, __FILE__,
-					"Found '%s' (0x%x,0x%x)",
-					list->abilities[i].model,
-					v, p);
+				GP_LOG_D ("Found '%s' (0x%x,0x%x)",
+					list->abilities[i].model, v, p);
 				*ability = i;
 			} else if (res < 0 && res != GP_ERROR_IO_USB_FIND) {
 				/* another error occurred. 
@@ -404,7 +388,7 @@ gp_abilities_list_detect_usb (CameraAbilitiesList *list,
 				 * report this to the calling
 				 * method?
 				 */
-				gp_log(GP_LOG_DEBUG, __FILE__,
+				GP_LOG_D (
 					"gp_port_usb_find_device(vendor=0x%x, "
 					"product=0x%x) returned %i, clearing "
 					"error message on port", v, p, res);
@@ -420,10 +404,8 @@ gp_abilities_list_detect_usb (CameraAbilitiesList *list,
 		if (c) {
 			res = gp_port_usb_find_device_by_class(port, c, s, p);
 			if (res == GP_OK) {
-				gp_log(GP_LOG_DEBUG, __FILE__,
-					"Found '%s' (0x%x,0x%x,0x%x)",
-					list->abilities[i].model,
-					c, s, p);
+				GP_LOG_D ("Found '%s' (0x%x,0x%x,0x%x)",
+					list->abilities[i].model, c, s, p);
 				*ability = i;
 			} else if (res < 0 && res != GP_ERROR_IO_USB_FIND) {
 				/* another error occurred. 
@@ -431,7 +413,7 @@ gp_abilities_list_detect_usb (CameraAbilitiesList *list,
 				 * report this to the calling
 				 * method?
 				 */
-				gp_log(GP_LOG_DEBUG, __FILE__,
+				GP_LOG_D (
 					"gp_port_usb_find_device_by_class("
 					"class=0x%x, subclass=0x%x, "
 					"protocol=0x%x) returned %i, "
@@ -468,7 +450,7 @@ gp_abilities_list_detect (CameraAbilitiesList *list,
 	GPPort *port;
 	int i, info_count;
 
-	CHECK_NULL (list && info_list && l);
+	C_PARAMS (list && info_list && l);
 
 	gp_list_reset (l);
 
@@ -572,17 +554,10 @@ remove_colon_from_string (char *str)
 int
 gp_abilities_list_append (CameraAbilitiesList *list, CameraAbilities abilities)
 {
-	CameraAbilities *new_abilities;
+	C_PARAMS (list);
 
-	CHECK_NULL (list);
-
-	if (!list->count)
-		new_abilities = malloc (sizeof (CameraAbilities));
-	else
-		new_abilities = realloc (list->abilities,
-				sizeof (CameraAbilities) * (list->count + 1));
-	CHECK_MEM (new_abilities);
-	list->abilities = new_abilities;
+	C_MEM (list->abilities = realloc (list->abilities,
+					sizeof (CameraAbilities) * (list->count + 1)));
 	
 	memcpy (&(list->abilities [list->count]), &abilities,
 		sizeof (CameraAbilities));
@@ -607,12 +582,10 @@ gp_abilities_list_append (CameraAbilitiesList *list, CameraAbilities abilities)
 int
 gp_abilities_list_reset (CameraAbilitiesList *list)
 {
-	CHECK_NULL (list);
+	C_PARAMS (list);
 
-	if (list->abilities) {
-		free (list->abilities);
-		list->abilities = NULL;
-	}
+	free (list->abilities);
+	list->abilities = NULL;
 	list->count = 0;
 
 	return (GP_OK);
@@ -627,7 +600,7 @@ gp_abilities_list_reset (CameraAbilitiesList *list)
 int
 gp_abilities_list_count (CameraAbilitiesList *list)
 {
-	CHECK_NULL (list);
+	C_PARAMS (list);
 
 	return (list->count);
 }
@@ -643,7 +616,7 @@ cmp_abilities (const void *a, const void *b) {
 static int
 gp_abilities_list_sort (CameraAbilitiesList *list)
 {
-	CHECK_NULL (list);
+	C_PARAMS (list);
 
 	qsort (list->abilities, list->count, sizeof(CameraAbilities), cmp_abilities);
 	return (GP_OK);
@@ -655,7 +628,7 @@ gp_abilities_list_lookup_id (CameraAbilitiesList *list, const char *id)
 {
 	int x;
 
-	CHECK_NULL (list && id);
+	C_PARAMS (list && id);
 
 	for (x = 0; x < list->count; x++)
 		if (!strcmp (list->abilities[x].id, id))
@@ -676,15 +649,14 @@ gp_abilities_list_lookup_model (CameraAbilitiesList *list, const char *model)
 {
 	int x;
 
-	CHECK_NULL (list && model);
+	C_PARAMS (list && model);
 
 	for (x = 0; x < list->count; x++) {
 		if (!strcasecmp (list->abilities[x].model, model))
 			return (x);
 	}
 
-	gp_log (GP_LOG_ERROR, "gphoto2-abilities-list", _("Could not find "
-		"any driver for '%s'"), model);
+	GP_LOG_E ("Could not find any driver for '%s'", model);
 	return (GP_ERROR_MODEL_NOT_FOUND);
 }
 
@@ -705,10 +677,8 @@ int
 gp_abilities_list_get_abilities (CameraAbilitiesList *list, int index,
 				 CameraAbilities *abilities)
 {
-	CHECK_NULL (list && abilities);
-
-	if (index < 0 || index >= list->count)
-		return (GP_ERROR_BAD_PARAMETERS);
+	C_PARAMS (list && abilities);
+	C_PARAMS (0 <= index && index < list->count);
 
 	memcpy (abilities, &list->abilities[index], sizeof (CameraAbilities));
 

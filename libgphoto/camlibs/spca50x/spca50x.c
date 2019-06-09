@@ -2,7 +2,7 @@
 /* spca50x.c - Gphoto2 library for cameras with sunplus spca50x */
 /*             chips                                            */
 /*                                                              */
-/* Copyright © 2002, 2003 Till Adam                             */
+/* Copyright 2002, 2003 Till Adam                               */
 /*                                                              */
 /* Author: Till Adam <till@adam-lilienthal.de>                  */
 /*                                                              */
@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <gphoto2/gphoto2.h>
 #include "gphoto2-endian.h"
 
@@ -65,7 +66,7 @@ spca50x_get_firmware_revision (CameraPrivateLibrary *lib)
 {
 
 	CHECK (gp_port_usb_msg_read (lib->gpdev, 0x20, 0x0, 0x0,
-				&(lib->fw_rev), 1));
+				(char *)&(lib->fw_rev), 1));
 	return GP_OK;
 }
 
@@ -79,7 +80,7 @@ spca50x_detect_storage_type (CameraPrivateLibrary *lib)
 	{
 		buf[i] = 0;  /* if no data returned, assume no capability */
 		CHECK (gp_port_usb_msg_read (lib->gpdev, 0x28, 0x0000, 
-					i, &buf[i], 0x01)); 
+					i, (char *)&buf[i], 0x01));
 	}
 
 	if (buf[0]) lib->storage_media_mask |= SPCA50X_SDRAM;
@@ -158,7 +159,7 @@ spca50x_reset (CameraPrivateLibrary * lib)
 
 
 int
-yuv2rgb (int y, int u, int v, int *_r, int *_g, int *_b)
+yuv2rgb (uint32_t y, uint32_t u, uint32_t v, uint32_t *_r, uint32_t *_g, uint32_t *_b)
 {
 	double r, g, b;
 

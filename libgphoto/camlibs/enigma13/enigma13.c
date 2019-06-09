@@ -1,6 +1,6 @@
 /* blink2.c
  *
- * Copyright © 2004 Olivier Fauchon <olivier@aixmarseille.com>
+ * Copyright 2004 Olivier Fauchon <olivier@aixmarseille.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,8 +18,6 @@
  * Boston, MA  02110-1301  USA
  *
  */
-
-#define _POSIX_C_SOURCE 199309L
 
 #include "config.h"
 
@@ -201,7 +199,7 @@ static int enigma13_get_toc(Camera *camera, int *filecount, char** toc)
                            response, 0x0001,
                           NULL, 0x0000));
         /* Wait until cam is ready to send the T.O.C */
-	GP_SYSTEM_SLEEP(ENIGMA13_WAIT_TOC_DELAY_MS);
+	usleep(ENIGMA13_WAIT_TOC_DELAY_MS * 1000);
 
         CHECK (gp_port_usb_msg_read (camera->port, 0x21,
                            0x0000, 0x0000,
@@ -248,7 +246,7 @@ static int enigma13_download_img(Camera *camera, char *toc, int index, char **im
 
 	/* Offset for image informations .
 	Each image has 16 bytes for name and 16 for size, and others*/
-	p = toc + (index*2)*32;
+	p = (uint8_t *)toc + (index*2)*32;
 
 	/* real size from toc*/
 	aligned_size = file_size =
@@ -278,7 +276,7 @@ static int enigma13_download_img(Camera *camera, char *toc, int index, char **im
 
 	CHECK_AND_FREE (gp_port_usb_msg_write (camera->port,
 	0x54, index+1, 2, NULL, 0x00), buf);
-	GP_SYSTEM_SLEEP(ENIGMA13_WAIT_IMAGE_READY_MS);
+	usleep(ENIGMA13_WAIT_IMAGE_READY_MS * 1000);
 
 	CHECK_AND_FREE (gp_port_usb_msg_read (camera->port, 0x21,
 		0x0000, 0x0000,

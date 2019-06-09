@@ -47,7 +47,7 @@
 
 #include "pslr.h"
 
-#define MAX_SEGMENTS 4
+#define MAX_SEGMENTS 20
 #define MAX_RESOLUTIONS 4
 #define POLL_INTERVAL 100000 /* Number of us to wait when polling */
 #define BLKSZ 65536 /* Block size for downloads; if too big, we get
@@ -80,6 +80,10 @@
         }                                                               \
     } while (0)
 
+#define PSLR_SUPPORTED_IMAGE_FORMAT_JPEG (1 << PSLR_IMAGE_FORMAT_JPEG)
+#define PSLR_SUPPORTED_IMAGE_FORMAT_RAW (1 << PSLR_IMAGE_FORMAT_RAW)
+#define PSLR_SUPPORTED_IMAGE_FORMAT_RAW_PLUS (1 << PSLR_IMAGE_FORMAT_RAW_PLUS)
+
 typedef enum {
     PSLR_BUFFER_SEGMENT_LAST = 2,
     PSLR_BUFFER_SEGMENT_INNER = 3,
@@ -104,6 +108,7 @@ typedef struct {
     uint32_t id2;
     const char *name;
     const char *resolution_steps[MAX_RESOLUTIONS];
+    int supported_formats;
 } ipslr_model_info_t;
 
 typedef struct {
@@ -159,22 +164,24 @@ static uint32_t get_uint32(uint8_t *buf);
 static bool is_k10d(ipslr_handle_t *p);
 static bool is_k20d(ipslr_handle_t *p);
 static bool is_k30(ipslr_handle_t *p);
+static bool is_k100ds(ipslr_handle_t *p);
 static bool is_istds(ipslr_handle_t *p);
 
 static pslr_progress_callback_t progress_callback = NULL;
 
 static ipslr_model_info_t camera_models[] = {
-    { PSLR_ID1_K30, PSLR_ID2_K30, "K30", { "16", "12", "8", "5" } },
-    { PSLR_ID1_K20D, PSLR_ID2_K20D, "K20D", { "14", "10", "6", "2" } },
-    { PSLR_ID1_K10D, PSLR_ID2_K10D, "K10D", { "10", "6", "2" } },
-    { PSLR_ID1_K110D, PSLR_ID2_K110D, "K110D", { "6", "4", "2" } },
-    { PSLR_ID1_K100D, PSLR_ID2_K100D, "K100D", { "6", "4", "2" } },
-    { PSLR_ID1_IST_DS2, PSLR_ID2_IST_DS2, "*ist DS2", { "6", "4", "2" } },
-    { PSLR_ID1_IST_DL, PSLR_ID2_IST_DL, "*ist DL", { "6", "4", "2" } },
-    { PSLR_ID1_IST_DS, PSLR_ID2_IST_DS, "*ist DS", { "6", "4", "2" } },
-    { PSLR_ID1_IST_D, PSLR_ID2_IST_D, "*ist D", { "6", "4", "2" } },
-    { PSLR_ID1_GX10, PSLR_ID2_GX10, "GX10", { "10", "6", "2" } },
-    { PSLR_ID1_GX20, PSLR_ID2_GX20, "GX20", { "14", "10", "6", "2" } },
+    { PSLR_ID1_K30, PSLR_ID2_K30, "K30", { "16", "12", "8", "5" }, PSLR_SUPPORTED_IMAGE_FORMAT_JPEG },
+    { PSLR_ID1_K20D, PSLR_ID2_K20D, "K20D", { "14", "10", "6", "2" }, PSLR_SUPPORTED_IMAGE_FORMAT_JPEG },
+    { PSLR_ID1_K10D, PSLR_ID2_K10D, "K10D", { "10", "6", "2" }, PSLR_SUPPORTED_IMAGE_FORMAT_JPEG },
+    { PSLR_ID1_K110D, PSLR_ID2_K110D, "K110D", { "6", "4", "2" }, PSLR_SUPPORTED_IMAGE_FORMAT_JPEG },
+    { PSLR_ID1_K100D, PSLR_ID2_K100D, "K100D", { "6", "4", "2" }, PSLR_SUPPORTED_IMAGE_FORMAT_JPEG },
+    { PSLR_ID1_K100DS, PSLR_ID2_K100DS, "K100DS", {}, PSLR_SUPPORTED_IMAGE_FORMAT_RAW },
+    { PSLR_ID1_IST_DS2, PSLR_ID2_IST_DS2, "*ist DS2", { "6", "4", "2" }, PSLR_SUPPORTED_IMAGE_FORMAT_JPEG },
+    { PSLR_ID1_IST_DL, PSLR_ID2_IST_DL, "*ist DL", { "6", "4", "2" }, PSLR_SUPPORTED_IMAGE_FORMAT_JPEG },
+    { PSLR_ID1_IST_DS, PSLR_ID2_IST_DS, "*ist DS", { "6", "4", "2" }, PSLR_SUPPORTED_IMAGE_FORMAT_JPEG },
+    { PSLR_ID1_IST_D, PSLR_ID2_IST_D, "*ist D", { "6", "4", "2" }, PSLR_SUPPORTED_IMAGE_FORMAT_JPEG },
+    { PSLR_ID1_GX10, PSLR_ID2_GX10, "GX10", { "10", "6", "2" }, PSLR_SUPPORTED_IMAGE_FORMAT_JPEG },
+    { PSLR_ID1_GX20, PSLR_ID2_GX20, "GX20", { "14", "10", "6", "2" }, PSLR_SUPPORTED_IMAGE_FORMAT_JPEG },
 };
 
 #ifndef LIBGPHOTO2
@@ -268,7 +275,7 @@ int pslr_connect(pslr_handle_t h)
     CHECK(ipslr_identify(p));
     CHECK(ipslr_status_full(p, &p->status));
     DPRINT("init bufmask=0x%x\n", p->status.bufmask);
-    if (is_k10d(p) || is_k20d(p) || is_k30(p))
+    if (is_k10d(p) || is_k20d(p) || is_k30(p) || is_k100ds(p))
         CHECK(ipslr_cmd_00_09(p, 2));
     CHECK(ipslr_status_full(p, &p->status));
     CHECK(ipslr_cmd_10_0a(p, 1));
@@ -482,6 +489,13 @@ int pslr_set_image_format(pslr_handle_t h, pslr_image_format_t format)
     return PSLR_OK;
 }
 
+int pslr_is_image_format_supported(pslr_handle_t h, pslr_image_format_t format)
+{
+    ipslr_handle_t *p = (ipslr_handle_t *) h;
+    if (format < 0 || format >= PSLR_IMAGE_FORMAT_MAX || !p->model)
+        return false;
+    return (1 << format) & p->model->supported_formats;
+}
 
 int pslr_set_raw_format(pslr_handle_t h, pslr_raw_format_t format)
 {
@@ -576,7 +590,7 @@ int pslr_buffer_open(pslr_handle_t h, int bufno, int buftype, int bufres)
             CHECK(ipslr_buffer_segment_info(p, &info));
             CHECK(ipslr_next_segment(p));
             DPRINT("Recover: type=%d\n", info.type);
-        } while (++retry2 < 10 && info.type != PSLR_BUFFER_SEGMENT_LAST);
+        } while (++retry2 < 100 && info.type != PSLR_BUFFER_SEGMENT_LAST);
     }
 
     if (retry == 3)
@@ -603,7 +617,7 @@ int pslr_buffer_open(pslr_handle_t h, int bufno, int buftype, int bufres)
         CHECK(ipslr_next_segment(p));
         buf_total += info.length;
         i++;
-    } while (i < 9 && info.type != PSLR_BUFFER_SEGMENT_LAST);
+    } while (i < 100 && info.type != PSLR_BUFFER_SEGMENT_LAST);
     p->segment_count = j;
     p->buffer_len = buf_total;
     p->offset = 0;
@@ -957,6 +971,23 @@ static int ipslr_status_full(ipslr_handle_t *p, pslr_status *status)
         return PSLR_OK;
     }
 
+    if (p->model && is_k100ds(p)) {
+        /* K100DS (Super) status block */
+        if (n != 264)  {
+            DPRINT("only got %d bytes\n", n);
+            return PSLR_READ_ERROR;
+        }
+
+        CHECK(read_result(p, buf, n));
+        memset(status, 0, sizeof(*status));
+
+        status->bufmask = get_uint32(&buf[0x10]);
+        status->image_format = PSLR_IMAGE_FORMAT_RAW;
+        status->raw_format = PSLR_RAW_FORMAT_PEF;
+
+        return PSLR_OK;
+    }
+
     if (p->model && is_istds(p)) {
         /* *ist DS status block */
         if (n != 0x108) {
@@ -986,14 +1017,11 @@ static int ipslr_status_full(ipslr_handle_t *p, pslr_status *status)
 
 static int ipslr_press_shutter(ipslr_handle_t *p)
 {
-    int r;
-    uint32_t bufmask;
     CHECK(ipslr_status_full(p, &p->status));
-    bufmask = p->status.bufmask;
     DPRINT("before: mask=0x%x\n", p->status.bufmask);
     CHECK(ipslr_write_args(p, 1, 2));
     CHECK(command(p, 0x10, 0x05, 0x04));
-    r = get_status(p);
+    get_status(p);
     DPRINT("shutter result code: 0x%x\n", r);
     return PSLR_OK;
 }
@@ -1054,7 +1082,7 @@ static int ipslr_next_segment(ipslr_handle_t *p)
     int r;
     CHECK(ipslr_write_args(p, 1, 0));
     CHECK(command(p, 0x04, 0x01, 0x04));
-    usleep(100000); /* needed !! 100 too short, 1000 not short enough for PEF */
+    usleep(10000); /* needed !! 100 too short, 1000 not short enough for PEF */
     r = get_status(p);
     if (r == 0)
         return PSLR_OK;
@@ -1084,7 +1112,6 @@ static int ipslr_download(ipslr_handle_t *p, uint32_t addr, uint32_t length, uin
     uint32_t block;
     int n;
     int retry;
-    int r;
     uint32_t length_start = length;
 
     retry = 0;
@@ -1097,10 +1124,10 @@ static int ipslr_download(ipslr_handle_t *p, uint32_t addr, uint32_t length, uin
         /*DPRINT("Get 0x%x bytes from 0x%x\n", block, addr); */
         CHECK(ipslr_write_args(p, 2, addr, block));
         CHECK(command(p, 0x06, 0x00, 0x08));
-        r = get_status(p);
+        get_status(p);
 
         n = scsi_read(p, downloadCmd, sizeof(downloadCmd), buf, block);
-        r = get_status(p);
+	get_status(p);
 
         if (n < 0) {
             if (retry < BLOCK_RETRY) {
@@ -1460,6 +1487,15 @@ static bool is_k30(ipslr_handle_t *p)
     if (p->model && p->model->id1 == PSLR_ID1_K30
         && p->model->id2 == PSLR_ID2_K30)
         return true;
+    return false;
+}
+
+static bool is_k100ds(ipslr_handle_t *p)
+{
+    if (p->model && p->model->id1 == PSLR_ID1_K100DS
+        && p->model->id2 == PSLR_ID2_K100DS)
+        return true;
+
     return false;
 }
 

@@ -1,7 +1,7 @@
 /*
-        Copyright © 2000 Mariusz Zynel <mariusz@mizar.org> (gPhoto port)
-        Copyright © 2000 Fredrik Roubert <roubert@df.lth.se> (idea)
-        Copyright © 1999 Galen Brooks <galen@nine.com> (DC1580 code)
+        Copyright 2000 Mariusz Zynel <mariusz@mizar.org> (gPhoto port)
+        Copyright 2000 Fredrik Roubert <roubert@df.lth.se> (idea)
+        Copyright 1999 Galen Brooks <galen@nine.com> (DC1580 code)
 
         This file is part of the gPhoto project and may only be used,  modified,
         and distributed under the terms of the gPhoto project license,  COPYING.
@@ -561,7 +561,7 @@ static int put_file_func (CameraFilesystem *fs, const char *folder, const char *
 	Camera *camera = user_data;
         int             blocks, blocksize, i, result;
 	const char      *data;
-	long int        size;
+	long unsigned int size;
 	unsigned int id;
 
         gp_context_status(context, _("Uploading image: %s."), name);

@@ -31,6 +31,7 @@
 #include <gphoto2/gphoto2-result.h>
 #include <bayer.h>
 #include <gamma.h>
+#include <unistd.h>
 
 #include "ultrapocket.h"
 #include "smal.h"
@@ -67,9 +68,9 @@ static int
 ultrapocket_command(GPPort *port, int iswrite, unsigned char *data, int datasize) {
     int ret;
     if (iswrite)
-	ret = gp_port_write(port, data, datasize);
+	ret = gp_port_write(port, (char *)data, datasize);
     else
-        ret = gp_port_read(port, data, datasize);
+        ret = gp_port_read(port, (char *)data, datasize);
 
     return ret;
 }
@@ -247,11 +248,13 @@ ultrapocket_getrawpicture(Camera *camera, GPContext *context,
    pmmhdr_len = strlen(ppmheader);
    outsize = ((long)width + 4) * height * 3 + pmmhdr_len;
    outdata = malloc(outsize);
-   if (!outdata)
+   if (!outdata) {
+     free(rawdata);
      return (GP_ERROR_NO_MEMORY);
+   }
 
    /* Set header */
-   strcpy(outdata, ppmheader);
+   strcpy((char *)outdata, ppmheader);
 
    /* Expand the Bayer tiles */
    result = gp_bayer_expand((rawdata+imgstart), width + 4, height,
@@ -340,7 +343,7 @@ ultrapocket_getpicture(Camera *camera, GPContext *context, unsigned char **pdata
    }
 
    /* Set header */
-   strcpy(outdata, ppmheader);
+   strcpy((char *)outdata, ppmheader);
 
    /* Decode and interpolate the Bayer tiles */
    result = gp_bayer_decode((rawdata+imgstart), width+4, height,
@@ -415,7 +418,7 @@ ultrapocket_skip(GPPort *port, int npackets)
 
    gp_port_get_timeout(port, &old_timeout);
    gp_port_set_timeout(port, 100);
-   for (; (npackets > 0) && gp_port_read(port, retbuf, 0x1000); npackets--);
+   for (; (npackets > 0) && gp_port_read(port, (char *)retbuf, 0x1000); npackets--);
    gp_port_set_timeout(port, old_timeout);
    return GP_OK;
 }

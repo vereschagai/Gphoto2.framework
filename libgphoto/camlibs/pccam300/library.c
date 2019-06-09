@@ -104,7 +104,8 @@ file_list_func (CameraFilesystem *fs, const char *folder,
 		CameraList *list, void *data, GPContext *context)
 {
 	Camera *camera = data;
-	unsigned int i, filecount, id, size, type;
+	unsigned int i, id, size, type;
+	int filecount;
 	CameraFile *file;
 	CameraFileInfo info;
 	unsigned char *buffer = NULL;
@@ -151,7 +152,7 @@ file_list_func (CameraFilesystem *fs, const char *folder,
 		}
 
 		if (file)
-			gp_file_set_data_and_size (file, buffer, size);
+			gp_file_set_data_and_size (file, (char *)buffer, size);
 		else
 			free (buffer);
 		
@@ -197,7 +198,7 @@ get_file_func (CameraFilesystem *fs, const char *folder,
 		default:
 			return GP_ERROR_NOT_SUPPORTED;
 	}
-	return gp_file_set_data_and_size (file, data, size);
+	return gp_file_set_data_and_size (file, (char *)data, size);
 }
 
 static int

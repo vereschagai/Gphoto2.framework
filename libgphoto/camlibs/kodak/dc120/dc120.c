@@ -1,3 +1,23 @@
+/* dc120.c
+ *
+ * Copyright (C) Scott Fritzinger
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA  02110-1301  USA
+ */
+
 #define _BSD_SOURCE
 #define _POSIX_C_SOURCE 199309L
 
@@ -7,6 +27,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include <gphoto2/gphoto2.h>
 #include <gphoto2/gphoto2-port.h>
@@ -413,7 +434,7 @@ int camera_init (Camera *camera, GPContext *context) {
         gp_port_send_break (camera->port, 2);
 
         /* Wait for it to update */
-        GP_SYSTEM_SLEEP(1500);
+        usleep(1500 * 1000);
 
 	if (dc120_set_speed (camera, speed) == GP_ERROR) {
                 return (GP_ERROR);

@@ -1,7 +1,7 @@
 /* pdc640.c
  *
- * Copyright © 2001 Lutz Müller <lutz@users.sourceforge.net>
- * Copyright © 2002 Marcus Meissner <marcus@jet.franken.de>
+ * Copyright 2001 Lutz Mueller <lutz@users.sourceforge.net>
+ * Copyright 2002 Marcus Meissner <marcus@jet.franken.de>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <gphoto2/gphoto2-library.h>
 #include <gphoto2/gphoto2-port-log.h>
@@ -725,7 +726,7 @@ pdc640_getpic (Camera *camera, int n, int thumbnail, int justraw,
 		return (GP_ERROR_NO_MEMORY);
 
 	/* Set header */
-	strcpy(outdata, ppmheader);
+	strcpy((char *)outdata, ppmheader);
 
 	/* Decode and interpolate the Bayer Mask */
 	result = gp_bayer_decode(*data, width, height,

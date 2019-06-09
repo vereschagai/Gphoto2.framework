@@ -1,6 +1,6 @@
 /* library.c:
  *
- * Copyright © 2002 Lutz Müller <lutz@users.sourceforge.net>
+ * Copyright 2002 Lutz Mueller <lutz@users.sourceforge.net>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -165,7 +165,8 @@ file_list_func (CameraFilesystem *fs, const char *folder, CameraList *list,
 		void *data, GPContext *context)
 {
 	Camera *camera = data;
-	int n, i;
+	int i;
+	unsigned int n;
 	const char *name;
 
 	/*
@@ -219,7 +220,7 @@ get_file_func (CameraFilesystem *fs, const char *folder,
 	default:
 		return (GP_ERROR_NOT_SUPPORTED);
 	}
-	CR (gp_file_set_data_and_size (file, d, size));
+	CR (gp_file_set_data_and_size (file, (char *)d, size));
 	CR (gp_file_set_mime_type (file, GP_MIME_JPEG));
 
 	return (GP_OK);
@@ -237,7 +238,7 @@ put_file_func (CameraFilesystem *fs, const char *folder, const char *name,
 		return GP_ERROR_BAD_PARAMETERS;
 	CR (gp_file_get_data_and_size (file, &d, &d_len));
 	CR (fuji_upload_init (camera, name, context));
-	return fuji_upload (camera, d, d_len, context);
+	return fuji_upload (camera, (unsigned char *)d, d_len, context);
 }
 
 static int

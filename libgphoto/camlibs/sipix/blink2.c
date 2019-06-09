@@ -1,6 +1,6 @@
 /* blink2.c
  *
- * Copyright © 2003 Marcus Meissner <marcus@jet.franken.de>
+ * Copyright 2003 Marcus Meissner <marcus@jet.franken.de>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #ifdef HAVE_LIBJPEG
 # include <jpeglib.h>
@@ -252,9 +253,6 @@ get_file_func (CameraFilesystem *fs, const char *folder, const char *filename,
 		jpeg_start_decompress(&dinfo);
 
 		pitch = (dinfo.output_width*dinfo.output_components+3)&~3;
-
-		if (ret != JPEG_HEADER_OK)
-			return GP_ERROR;
 
 		rawline = malloc(pitch);
 		convline = malloc(dinfo.output_width*2*3);

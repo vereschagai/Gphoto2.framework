@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 #include <gphoto2/gphoto2-library.h>
 #include <gphoto2/gphoto2-result.h>
@@ -84,6 +85,11 @@ camera_abilities (CameraAbilitiesList *list)
 	if (GP_OK != (ret = gp_abilities_list_append (list, a)))
 		return ret;
 
+	strcpy (a.model, "Pentax:K100DS");
+	a.usb_product		= 0x00a1;
+	if (GP_OK != (ret = gp_abilities_list_append (list, a)))
+		return ret;
+
 	strcpy (a.model, "Pentax:K200D");
 	a.usb_product		= 0x0093;
 	if (GP_OK != (ret = gp_abilities_list_append (list, a)))
@@ -99,6 +105,12 @@ camera_abilities (CameraAbilitiesList *list)
         strcpy (a.model, "Pentax:K30");
         // same usb vendor like Pentax K5D
         a.usb_product           = 0x0132;
+        if (GP_OK != (ret = gp_abilities_list_append (list, a)))
+                return ret;
+
+        strcpy (a.model, "Pentax:K3");
+        // same usb vendor like Pentax K5D
+        a.usb_product           = 0x0164;
         if (GP_OK != (ret = gp_abilities_list_append (list, a)))
                 return ret;
 	return GP_OK;
@@ -151,27 +163,57 @@ static int
 save_buffer(pslr_handle_t camhandle, int bufno, CameraFile *file, pslr_status *status)
 {
 	int imagetype;
+	int image_resolution;
 	uint8_t buf[65536];
-	int length;
 	uint32_t current;
 
-	if (status->image_format != PSLR_IMAGE_FORMAT_JPEG) {
-		gp_log (GP_LOG_ERROR, "pentax", "Sorry, don't know how to make capture work with RAW format yet :(\n");
-		return GP_ERROR_NOT_SUPPORTED;
+	switch (status->image_format) {
+		case PSLR_IMAGE_FORMAT_JPEG:
+			imagetype = status->jpeg_quality + 1;
+			image_resolution = status->jpeg_resolution;
+		break;
+		case PSLR_IMAGE_FORMAT_RAW:
+			imagetype = 0;
+			image_resolution = 0;
+		break;
+		default:
+			gp_log (GP_LOG_ERROR, "pentax", "Sorry, only JPEG and PEF RAW files are supported\n");
+			return GP_ERROR;
 	}
-	imagetype = status->jpeg_quality + 1;
-	GP_DEBUG("get buffer %d type %d res %d\n", bufno, imagetype, status->jpeg_resolution);
 
+	GP_DEBUG("get buffer %d type %d res %d\n", bufno, imagetype, image_resolution);
 	if ( pslr_buffer_open(camhandle, bufno, imagetype, status->jpeg_resolution) != PSLR_OK)
 		return GP_ERROR;
 
-	length = pslr_buffer_get_size(camhandle);
 	current = 0;
 	while (1) {
 		uint32_t bytes;
 		bytes = pslr_buffer_read(camhandle, buf, sizeof(buf));
 		if (bytes == 0)
 			break;
+		// PEF file got from K100D Super have broken header, WTF?
+		if (current == 0 && status->image_format == PSLR_IMAGE_FORMAT_RAW &&
+				status->raw_format == PSLR_RAW_FORMAT_PEF) {
+			const unsigned char correct_header[92] =
+			{
+				0x4d, 0x4d, 0x00, 0x2a, 0x00, 0x00, 0x00, 0x08,
+				0x00, 0x13, 0x01, 0x00, 0x00, 0x04, 0x00, 0x00,
+				0x00, 0x01, 0x00, 0x00, 0x0b, 0xe0, 0x01, 0x01,
+				0x00, 0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
+				0x07, 0xe8, 0x01, 0x02, 0x00, 0x03, 0x00, 0x00,
+				0x00, 0x01, 0x00, 0x0c, 0x00, 0x00, 0x01, 0x03,
+				0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x80, 0x05,
+				0x00, 0x00, 0x01, 0x06, 0x00, 0x03, 0x00, 0x00,
+				0x00, 0x01, 0x80, 0x23, 0x00, 0x00, 0x01, 0x0f,
+				0x00, 0x02, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00,
+				0x00, 0xf2, 0x01, 0x10, 0x00, 0x02, 0x00, 0x00,
+				0x00, 0x14, 0x00, 0x00
+			};
+
+			if (bytes < sizeof(correct_header))
+				return GP_ERROR;
+			memcpy(buf, correct_header, sizeof(correct_header));
+		}
 		gp_file_append (file, (char*)buf, bytes);
 		current += bytes;
 	}
@@ -195,12 +237,22 @@ camera_capture (Camera *camera, CameraCaptureType type, CameraFilePath *path,
 	pslr_shutter (p);
 
 	strcpy (path->folder, "/");
-	sprintf (path->name, "capt%04d.jpg", capcnt++);
+	const char *mime;
+	if (status.image_format == PSLR_IMAGE_FORMAT_JPEG) {
+		sprintf (path->name, "capt%04d.jpg", capcnt++);
+		mime = GP_MIME_JPEG;
+	} else if (status.image_format == PSLR_IMAGE_FORMAT_RAW &&
+			status.raw_format == PSLR_RAW_FORMAT_PEF) {
+		sprintf (path->name, "capt%04d.pef", capcnt++);
+		mime = GP_MIME_RAW;
+	} else {
+		return GP_ERROR;
+	}
 
 	ret = gp_file_new(&file);
 	if (ret!=GP_OK) return ret;
 	gp_file_set_mtime (file, time(NULL));
-	gp_file_set_mime_type (file, GP_MIME_JPEG);
+	gp_file_set_mime_type (file, mime);
 
 	while (1) {
 		length = save_buffer( p, (int)0, file, &status);
@@ -277,14 +329,24 @@ camera_wait_for_event (Camera *camera, int timeout,
 				break;
 		if (bufno == 16) goto next;
 
+		const char *mime;
 		path = malloc(sizeof(CameraFilePath));
 		strcpy (path->folder, "/");
-		sprintf (path->name, "capt%04d.jpg", capcnt++);
+		if (status.image_format == PSLR_IMAGE_FORMAT_JPEG) {
+			sprintf (path->name, "capt%04d.jpg", capcnt++);
+			mime = GP_MIME_JPEG;
+		} else if (status.image_format == PSLR_IMAGE_FORMAT_RAW &&
+				status.raw_format == PSLR_RAW_FORMAT_PEF) {
+			sprintf (path->name, "capt%04d.pef", capcnt++);
+			mime = GP_MIME_RAW;
+		} else {
+			return GP_ERROR;
+		}
 
 		ret = gp_file_new(&file);
 		if (ret!=GP_OK) return ret;
 		gp_file_set_mtime (file, time(NULL));
-		gp_file_set_mime_type (file, GP_MIME_JPEG);
+		gp_file_set_mime_type (file, mime);
 
 		while (1) {
 			length = save_buffer( p, bufno, file, &status);
@@ -362,30 +424,50 @@ camera_get_config (Camera *camera, CameraWidget **window, GPContext *context)
 	gp_widget_set_readonly (t, 1);
 	gp_widget_append (section, t);
 
-
-	gp_widget_new (GP_WIDGET_RADIO, _("Image Size"), &t);
-	gp_widget_set_name (t, "imgsize");
-	for (i = 0; i < PSLR_MAX_RESOLUTIONS; i++)
-	{
-		gp_widget_add_choice (t, available_resolutions[i]);
+	gp_widget_new (GP_WIDGET_RADIO, _("Image format"), &t);
+	gp_widget_set_name (t, "img_format");
+	if (pslr_is_image_format_supported(camera->pl, PSLR_IMAGE_FORMAT_JPEG))
+		gp_widget_add_choice (t, "JPEG");
+	if (pslr_is_image_format_supported(camera->pl, PSLR_IMAGE_FORMAT_RAW))
+		gp_widget_add_choice (t, "RAW");
+	if (pslr_is_image_format_supported(camera->pl, PSLR_IMAGE_FORMAT_RAW_PLUS))
+		gp_widget_add_choice (t, "RAW+");
+	switch (status.image_format) {
+		case PSLR_IMAGE_FORMAT_JPEG: gp_widget_set_value (t, "JPEG"); break;
+		case PSLR_IMAGE_FORMAT_RAW: gp_widget_set_value (t, "RAW"); break;
+		case PSLR_IMAGE_FORMAT_RAW_PLUS: gp_widget_set_value (t, "RAW+"); break;
+		default:
+			sprintf(buf, _("Unknown format %d"), status.image_format);
+			gp_widget_set_value (t, buf);
+		break;
 	}
-
-        if (status.jpeg_resolution > 0 && status.jpeg_resolution < PSLR_MAX_RESOLUTIONS)
-		gp_widget_set_value (t, available_resolutions[status.jpeg_resolution]);
-        else
-		gp_widget_set_value (t, _("Unknown"));
-
 	gp_widget_append (section, t);
 
-	gp_widget_new (GP_WIDGET_RADIO, _("Image Quality"), &t);
-	gp_widget_set_name (t, "imgquality");
-	gp_widget_add_choice (t, "4");
-	gp_widget_add_choice (t, "3");
-	gp_widget_add_choice (t, "2");
-	gp_widget_add_choice (t, "1");
-	sprintf (buf,"%d",status.jpeg_quality);
-	gp_widget_set_value (t, buf);
-	gp_widget_append (section, t);
+	if (pslr_is_image_format_supported(camera->pl, PSLR_IMAGE_FORMAT_JPEG)) {
+		gp_widget_new (GP_WIDGET_RADIO, _("Image Size"), &t);
+		gp_widget_set_name (t, "imgsize");
+		for (i = 0; i < PSLR_MAX_RESOLUTIONS && available_resolutions[i]; i++)
+		{
+			gp_widget_add_choice (t, available_resolutions[i]);
+		}
+
+		if (status.jpeg_resolution > 0 && status.jpeg_resolution < PSLR_MAX_RESOLUTIONS)
+			gp_widget_set_value (t, available_resolutions[status.jpeg_resolution]);
+		else
+			gp_widget_set_value (t, _("Unknown"));
+
+		gp_widget_append (section, t);
+
+		gp_widget_new (GP_WIDGET_RADIO, _("Image Quality"), &t);
+		gp_widget_set_name (t, "imgquality");
+		gp_widget_add_choice (t, "4");
+		gp_widget_add_choice (t, "3");
+		gp_widget_add_choice (t, "2");
+		gp_widget_add_choice (t, "1");
+		sprintf (buf,"%d",status.jpeg_quality);
+		gp_widget_set_value (t, buf);
+		gp_widget_append (section, t);
+	}
 
 	gp_widget_new (GP_WIDGET_RADIO, _("ISO"), &t);
 	gp_widget_set_name (t, "iso");

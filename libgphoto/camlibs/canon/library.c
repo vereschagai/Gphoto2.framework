@@ -3,10 +3,10 @@
  * library.c
  *
  *   Canon Camera library for the gphoto project,
- *   © 1999 Wolfgang G. Reissnegger
+ *   Copyright 1999 Wolfgang G. Reissnegger
  *   Developed for the Canon PowerShot A50
  *   Additions for PowerShot A5 by Ole W. Saastad
- *   © 2000: Other additions  by Edouard Lafargue, Philippe Marzouk
+ *   Copyright 2000: Other additions  by Edouard Lafargue, Philippe Marzouk
  *
  * This file contains all the "glue code" required to use the canon
  * driver with libgphoto2.
@@ -31,7 +31,6 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <termios.h>
 #include <time.h>
 #include <ctype.h>
 
@@ -957,9 +956,7 @@ get_file_func (CameraFilesystem *fs, const char *folder, const char *filename,
 			break;
 #endif /* HAVE_LIBEXIF */
 		default:
-			/* this case should've been caught above anyway */
-			if (data)
-				free (data);
+			free (data);
 			data = NULL;
 			return (GP_ERROR_NOT_SUPPORTED);
 	}
@@ -1719,16 +1716,17 @@ camera_get_config (Camera *camera, CameraWidget **window, GPContext *context)
 
 
 
-	/* Zoom level */
-	gp_widget_new (GP_WIDGET_RANGE, _("Zoom"), &t);
-	gp_widget_set_name (t, "zoom");
-	canon_int_get_zoom(camera, &zoomVal, &zoomMax, context);
-	gp_widget_set_range (t, 0, zoomMax, 1);
-	zoom = zoomVal;
-	gp_widget_set_value (t, &zoom);
-	gp_widget_append (section, t);
-
-
+	/* DSLRs have only "Manual" Zoom */
+        if ( camera->pl->md->id_str && !strstr(camera->pl->md->id_str,"EOS") && !strstr(camera->pl->md->id_str,"Rebel")) {
+		/* Zoom level */
+		gp_widget_new (GP_WIDGET_RANGE, _("Zoom"), &t);
+		gp_widget_set_name (t, "zoom");
+		canon_int_get_zoom(camera, &zoomVal, &zoomMax, context);
+		gp_widget_set_range (t, 0, zoomMax, 1);
+		zoom = zoomVal;
+		gp_widget_set_value (t, &zoom);
+		gp_widget_append (section, t);
+	}
 
 	/* Aperture */
 	gp_widget_new (GP_WIDGET_MENU, _("Aperture"), &t);
@@ -2262,21 +2260,23 @@ camera_set_config (Camera *camera, CameraWidget *window, GPContext *context)
 	}
 
 
-	/* Zoom */
-	gp_widget_get_child_by_label (window, _("Zoom"), &w);
-	if (gp_widget_changed (w)) {
-		float zoom;
-		gp_widget_get_value (w, &zoom);
-		if (!check_readiness (camera, context)) {
-			gp_context_status (context, _("Camera unavailable"));
-		} else {
-				if (canon_int_set_zoom (camera, zoom, context) == GP_OK)
-					gp_context_status (context, _("Zoom level changed"));
-				else
-					gp_context_status (context, _("Could not change zoom level"));
-			}		
-		}
-
+	/* DSLRs have only "Manual" Zoom */
+        if ( camera->pl->md->id_str && !strstr(camera->pl->md->id_str,"EOS") && !strstr(camera->pl->md->id_str,"Rebel")) {
+		/* Zoom */
+		gp_widget_get_child_by_label (window, _("Zoom"), &w);
+		if (gp_widget_changed (w)) {
+			float zoom;
+			gp_widget_get_value (w, &zoom);
+			if (!check_readiness (camera, context)) {
+				gp_context_status (context, _("Camera unavailable"));
+			} else {
+					if (canon_int_set_zoom (camera, zoom, context) == GP_OK)
+						gp_context_status (context, _("Zoom level changed"));
+					else
+						gp_context_status (context, _("Could not change zoom level"));
+				}		
+			}
+	}
 
 	/* Aperture */
 	gp_widget_get_child_by_label (window, _("Aperture"), &w);

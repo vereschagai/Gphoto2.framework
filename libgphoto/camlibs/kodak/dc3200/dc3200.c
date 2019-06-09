@@ -1,3 +1,23 @@
+/* dc3200.c
+ *
+ * Copyright (C) 2000,2001,2002 donn morrison - dmorriso@gulf.uvic.ca
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA  02110-1301  USA
+ */
+
 /****************************************************
  * kodak dc3200 digital camera driver library       *
  * for gphoto2                                      *
@@ -16,6 +36,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include <gphoto2/gphoto2-library.h>
 
@@ -156,7 +177,7 @@ static int folder_list_func (CameraFilesystem *fs, const char *folder,
 {
 	Camera 		*camera = user_data;
 	unsigned char	*data = NULL;
-	long		data_len = 0;
+	long unsigned 	data_len = 0;
 	unsigned char	*ptr_data_buff;
 	char		filename[13], *ptr;
 	int		res, i;
@@ -211,7 +232,7 @@ static int folder_list_func (CameraFilesystem *fs, const char *folder,
 		}
 		
 		/* copy the filename */
-		strncpy(filename, ptr_data_buff, sizeof(filename));
+		strncpy(filename, (char *)ptr_data_buff, sizeof(filename));
 
 		/* chop off the trailing spaces and null terminate */
 		ptr = strchr(filename, 0x20);
@@ -237,7 +258,7 @@ static int file_list_func (CameraFilesystem *fs, const char *folder,
 {
 	Camera		*camera = user_data;
 	unsigned char	*data = NULL;
-	long		data_len = 0;
+	long unsigned	data_len = 0;
 	unsigned char	*ptr_data_buff;
 	char		filename[13];
 	int		res, i;
@@ -285,12 +306,12 @@ static int file_list_func (CameraFilesystem *fs, const char *folder,
 		}
 		
 		/* copy the first 8 bytes of filename */
-		strncpy(filename, ptr_data_buff, 8);
+		strncpy(filename, (char *)ptr_data_buff, 8);
 		filename[8] = 0;
 		/* add dot */
 		strcat(filename, ".");
 		/* copy extension, last 3 bytes*/
-		strncat(filename, ptr_data_buff+8, 3);
+		strncat(filename, (char *)ptr_data_buff+8, 3);
 		
 		if(!strstr(filename, ".JPG") && !strstr(filename, ".jpg")) {
 			ptr_data_buff += 20;
@@ -316,7 +337,7 @@ static int get_file_func (CameraFilesystem *fs, const char *folder,
 {
 	Camera		*camera = user_data;
 	unsigned char	*data = NULL;
-	long		data_len = 0;
+	long unsigned	data_len = 0;
 	int		res;
 
 	if(camera->pl->context)
@@ -358,7 +379,7 @@ static int get_file_func (CameraFilesystem *fs, const char *folder,
 		return GP_ERROR;
 	}
 
-	gp_file_append (file, data, data_len);
+	gp_file_append (file, (char *)data, data_len);
 
 	free(data);
 	camera->pl->context = NULL;
@@ -372,7 +393,7 @@ get_info_func (CameraFilesystem *fs, const char *folder,
 {
 	Camera		*camera = user_data;
 	unsigned char	*data = NULL;
-	long		data_len = 0;
+	long unsigned	data_len = 0;
 	int		res;
 	char		file[1024];
 

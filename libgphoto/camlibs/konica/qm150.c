@@ -1,7 +1,7 @@
 /* qm150.c
  *
- * Copyright © 2003 Marcus Meissner <marcus@jet.franken.de>
- *                  Aurélien Croc (AP²C) <programming@ap2c.com>
+ * Copyright 2003 Marcus Meissner <marcus@jet.franken.de>
+ *                Aurelien Croc (AP2C) <programming@ap2c.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -43,6 +43,7 @@
 #include <gphoto2/gphoto2-result.h>
 #include <gphoto2/gphoto2-port-log.h>
 #include <exif.h>
+#include <unistd.h>
 
 #ifdef ENABLE_NLS
 #  include <libintl.h>
@@ -542,7 +543,7 @@ put_file_func (CameraFilesystem *fs, const char *folder, const char *name,
 				return ret;
 			}
 			/* and complete with zeros */
-			bzero(buf,DATA_BUFFER);
+			memset(buf,0,DATA_BUFFER);
 			ret = gp_port_write (camera->port, (char*)buf, (DATA_BUFFER - 
 				(len - len_sent)));
 			if (ret<GP_OK) {

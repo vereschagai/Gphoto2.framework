@@ -1,6 +1,6 @@
 /* library.c (for Largan)
  *
- * Copyright © 2002 Hubert Figuiere <hfiguiere@teaser.fr>
+ * Copyright 2002 Hubert Figuiere <hfiguiere@teaser.fr>
  * Code largely borrowed to lmini-0.1 by Steve O Connor
  * With the help of specifications for lmini camera by Largan
  *
@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <gphoto2/gphoto2.h>
 #include <gphoto2/gphoto2-port.h>
@@ -208,7 +209,7 @@ int largan_get_pict (Camera * camera, largan_pict_type type,
 	
 	/* the remaining 5 bytes are read here */
 
-	ret = gp_port_read (camera->port, buf, sizeof(buf));
+	ret = gp_port_read (camera->port, (char *)buf, sizeof(buf));
 	if (ret < GP_OK) {
 		return ret;
 	}
@@ -246,8 +247,12 @@ int largan_get_pict (Camera * camera, largan_pict_type type,
 	case LARGAN_THUMBNAIL: 
 		{
 			char * buffer = (char*)malloc(pict_size);
+
+			if (!buffer)
+				return GP_ERROR_NO_MEMORY;
 			ret = gp_port_read (camera->port, buffer, pict_size);
 			if (ret < GP_OK) {
+				free (buffer);
 				return ret;
 			}
 			largan_pict_alloc_data (pict, 19200 + sizeof(BMPheader));
@@ -402,7 +407,7 @@ static int largan_recv_reply (Camera * camera, uint8_t *reply,
 	uint8_t packet [4];
 	uint8_t	packet_size = 0;
 	memset (packet, 0, sizeof (packet));
-	ret = gp_port_read (camera->port, packet, 1);
+	ret = gp_port_read (camera->port, (char *)packet, 1);
 	if (ret < GP_OK) {
 		return ret;
 	}
@@ -429,7 +434,7 @@ static int largan_recv_reply (Camera * camera, uint8_t *reply,
 		*reply = packet[0];
 	}
 	if (packet_size >= 2) {
-		ret = gp_port_read (camera->port, &packet[1], 1);
+		ret = gp_port_read (camera->port, (char *)&packet[1], 1);
 		if (ret < GP_OK) {
 			return ret;
 		}
@@ -438,7 +443,7 @@ static int largan_recv_reply (Camera * camera, uint8_t *reply,
 		}
 	}
 	if (packet_size >= 3) {
-		ret = gp_port_read (camera->port, &packet[2], 1);
+		ret = gp_port_read (camera->port, (char *)&packet[2], 1);
 		if (ret < GP_OK) {
 			return ret;
 		}
@@ -491,7 +496,7 @@ static int largan_send_command (Camera * camera, uint8_t cmd, uint8_t param1,
 		return GP_ERROR; /* unknown command */
 	}
 
-	return gp_port_write (camera->port, packet, packet_size);
+	return gp_port_write (camera->port, (char *)packet, packet_size);
 }
 
 
@@ -532,7 +537,7 @@ static int purge_camera (Camera * camera)
 
 	while (1)
 	{
-		count = gp_port_read (camera->port, buffer, 1);
+		count = gp_port_read (camera->port, (char *)buffer, 1);
 		if (count < GP_OK) 
 			return count;
 
@@ -563,12 +568,11 @@ static int wakeup_camera (Camera * camera)
 {
 	int num_pix;
 	/*	int i;*/
-	int ret;
 	
 	if (camera->port->type == GP_PORT_SERIAL) {
-		ret = set_serial_speed (camera, 4800);	/*wakes camera best*/
+		set_serial_speed (camera, 4800);	/*wakes camera best*/
 		num_pix = largan_get_num_pict (camera);	/*this wakes*/
-		ret = set_serial_speed (camera, 19200);	/*back to normal*/
+		set_serial_speed (camera, 19200);	/*back to normal*/
 		sleep (1);
 		num_pix = largan_get_num_pict (camera);	/*this wakes*/
 		if (num_pix >= 0){

@@ -103,7 +103,10 @@ wait_event_and_download (Camera *camera, int waittime, GPContext *context) {
 			fd = creat(queue[0].path.name, 0644);
 		else
 			fd = open(queue[0].path.name, O_RDWR, 0644);
-		if (fd == -1) perror(queue[0].path.name);
+		if (fd == -1) {
+			perror(queue[0].path.name);
+			return GP_ERROR;
+		}
 		if (-1 == lseek(fd, queue[0].offset, SEEK_SET))
 			perror("lseek");
 		if (-1 == write (fd, buffer, size)) 
@@ -128,7 +131,6 @@ int
 main(int argc, char **argv) {
 	Camera		*camera;
 	int		retval, nrcapture = 0;
-	time_t		lastsec;
 	struct timeval	tval;
 	GPContext 	*context = sample_create_context();
 
@@ -139,7 +141,6 @@ main(int argc, char **argv) {
 	/*gp_log_add_func(GP_LOG_DATA, errordumper, NULL); */
 	gp_camera_new(&camera);
 
-	lastsec = time(NULL)-3;
 	retval = gp_camera_init(camera, context);
 	if (retval != GP_OK) {
 		printf("gp_camera_init: %d\n", retval);

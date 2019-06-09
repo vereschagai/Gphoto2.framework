@@ -1,13 +1,13 @@
 /* -*- Mode: C; indent-tabs-mode: t; c-basic-offset: 8; tab-width: 8 -*- */
 /*
- * Copyright © 2001 Lutz Müller <lutz@users.sf.net>
- * Copyright © 2000 Philippe Marzouk <pmarzouk@bigfoot.com>
- * Copyright © 2000 Edouard Lafargue <Edouard.Lafargue@bigfoot.com>
- * Copyright © 1999 Johannes Erdfelt <johannes@erdfelt.com>
- * Copyright © 1999 Scott Fritzinger <scottf@unr.edu>
+ * Copyright 2001 Lutz Mueller <lutz@users.sf.net>
+ * Copyright 2000 Philippe Marzouk <pmarzouk@bigfoot.com>
+ * Copyright 2000 Edouard Lafargue <Edouard.Lafargue@bigfoot.com>
+ * Copyright 1999 Johannes Erdfelt <johannes@erdfelt.com>
+ * Copyright 1999 Scott Fritzinger <scottf@unr.edu>
  *
  * Based on work by:
- * Copyright © 1999 Beat Christen <spiff@longstreet.ch>
+ * Copyright 1999 Beat Christen <spiff@longstreet.ch>
  * 	for the toshiba gPhoto library.
  *                   
  *
@@ -198,8 +198,6 @@
 #define GP_PORT_SERIAL_RANGE_HIGH       0
 #endif
 
-#define GP_MODULE "serial"
-
 struct _GPPortPrivateLibrary {
 	int fd;       /* Device handle */
 	int baudrate; /* Current speed */
@@ -220,8 +218,7 @@ gp_port_serial_lock (GPPort *dev, const char *path)
 	int pid;
 #endif
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port-serial",
-		"Trying to lock '%s'...", path);
+	GP_LOG_D ("Trying to lock '%s'...", path);
 
 #if defined(HAVE_TTYLOCK)
 	if (ttylock ((char*) path)) {
@@ -300,7 +297,7 @@ gp_port_library_list (GPPortInfoList *list)
 {
 	GPPortInfo info;
 	char path[1024], prefix[1024];
-	int x, fd;
+	int x;
 	struct stat s;
 #ifdef OS2
 	int r, fh, option;
@@ -334,33 +331,14 @@ gp_port_library_list (GPPortInfoList *list)
 		if ((stat (path, &s) == -1) && ((errno == ENOENT) || (errno == ENODEV)))
 			continue;
 
-#if 0
-		/* First of all, try to lock the device */
-		if (gp_port_serial_lock (NULL, path) < 0)
-			continue;
-			
-		/* Device locked. Try to open the device. */
-		fd = open (path, O_RDONLY | O_NONBLOCK);
-		if (fd < 0) {
-			gp_port_serial_unlock (NULL, path);
-			continue;
-		}
-
-		/*
-		 * Device locked and opened. Close it, unlock it, and add
-		 * it to the list.
-		 */
-		close (fd);
-		gp_port_serial_unlock (NULL, path);
-#endif
 		gp_port_info_new (&info);
 		gp_port_info_set_type (info, GP_PORT_SERIAL);
-		xname = malloc (strlen("serial:")+strlen(path)+1);
+		C_MEM (xname = malloc (strlen("serial:")+strlen(path)+1));
 		strcpy (xname, "serial:");
 		strcat (xname, path);
 		gp_port_info_set_path (info, xname);
 		free (xname);
-		xname = malloc (100);
+		C_MEM (xname = malloc (100));
 		snprintf (xname, 100, _("Serial Port %i"), x);
 		gp_port_info_set_name (info, xname);
 		free (xname);
@@ -381,13 +359,9 @@ gp_port_library_list (GPPortInfoList *list)
 static int
 gp_port_serial_init (GPPort *dev)
 {
-	if (!dev)
-		return (GP_ERROR_BAD_PARAMETERS);
+	C_PARAMS (dev);
 
-	dev->pl = malloc (sizeof (GPPortPrivateLibrary));
-	if (!dev->pl)
-		return (GP_ERROR_NO_MEMORY);
-	memset (dev->pl, 0, sizeof (GPPortPrivateLibrary));
+	C_MEM (dev->pl = calloc (1, sizeof (GPPortPrivateLibrary)));
 
 	/* There is no default speed. */
 	dev->pl->baudrate = -1;
@@ -398,13 +372,10 @@ gp_port_serial_init (GPPort *dev)
 static int
 gp_port_serial_exit (GPPort *dev)
 {
-	if (!dev)
-		return (GP_ERROR_BAD_PARAMETERS);
+	C_PARAMS (dev);
 
-	if (dev->pl) {
-		free (dev->pl);
-		dev->pl = NULL;
-	}
+	free (dev->pl);
+	dev->pl = NULL;
 
 	return GP_OK;
 }
@@ -423,7 +394,7 @@ gp_port_serial_open (GPPort *dev)
 	if (result < GP_OK) return result;
 	result = gp_port_info_get_path (info, &port);
 	if (result < GP_OK) return result;
-	gp_log (GP_LOG_DEBUG, "gp_port_serial_open", "opening %s", port);
+	GP_LOG_D ("opening %s", port);
 
 	/* Ports are named "serial:/dev/whatever/port" */
 	port = strchr (port, ':');
@@ -437,8 +408,7 @@ gp_port_serial_open (GPPort *dev)
 			result = gp_port_serial_lock (dev, port);
 			if (result == GP_OK)
 				break;
-			gp_log (GP_LOG_DEBUG, "gphoto2-port-serial",
-				"Failed to get a lock, trying again...");
+			GP_LOG_D ("Failed to get a lock, trying again...");
 			sleep (1);
 		}
 		CHECK (result);
@@ -488,7 +458,7 @@ gp_port_serial_close (GPPort *dev)
 
 	/* Unlock the port */
 	path = strchr (dev->settings.serial.port, ':');
-	if (!path) return GP_ERROR_BAD_PARAMETERS;
+	C_PARAMS (path);
 	path++;
 	CHECK (gp_port_serial_unlock (dev, path));
 
@@ -508,8 +478,7 @@ gp_port_serial_write (GPPort *dev, const char *bytes, int size)
 {
 	int len, ret;
 
-	if (!dev)
-		return (GP_ERROR_BAD_PARAMETERS);
+	C_PARAMS (dev);
 
 	/* The device needs to be opened for that operation */
 	if (!dev->pl->fd)
@@ -562,8 +531,7 @@ gp_port_serial_read (GPPort *dev, char *bytes, int size)
         fd_set readfs;          /* file descriptor set */
         int readen = 0, now;
 
-	if (!dev)
-		return (GP_ERROR_BAD_PARAMETERS);
+	C_PARAMS (dev);
 
 	/* The device needs to be opened for that operation */
 	if (!dev->pl->fd)
@@ -673,8 +641,7 @@ gp_port_serial_get_pin (GPPort *dev, GPPin pin, GPLevel *level)
 	int j, bit;
 #endif
 
-	if (!dev || !level)
-		return (GP_ERROR_BAD_PARAMETERS);
+	C_PARAMS (dev && level);
 
 	*level = 0;
 
@@ -704,8 +671,7 @@ gp_port_serial_set_pin (GPPort *dev, GPPin pin, GPLevel level)
         int bit, request;
 #endif
 
-	if (!dev)
-		return (GP_ERROR_BAD_PARAMETERS);
+	C_PARAMS (dev);
 
 #ifdef HAVE_TERMIOS_H
 	CHECK (get_termios_bit (dev, pin, &bit));
@@ -807,8 +773,7 @@ gp_port_serial_baudconv (int baudrate)
 #endif
         default:
 		ret = (speed_t) baudrate;
-		gp_log (GP_LOG_DEBUG, "gphoto2-port-serial", "Baudrate %d "
-			"unknown - using as is", baudrate);
+		GP_LOG_D ("Baudrate %d unknown - using as is", baudrate);
         }
 
         return ret;
@@ -841,8 +806,7 @@ gp_port_serial_check_speed (GPPort *dev)
 	if (dev->pl->baudrate == dev->settings.serial.speed)
 		return (GP_OK);
 
-	gp_log (GP_LOG_DEBUG, "gphoto2-port-serial",
-		"Setting baudrate to %d...", dev->settings.serial.speed);
+	GP_LOG_D ("Setting baudrate to %d...", dev->settings.serial.speed);
 	speed = gp_port_serial_baudconv (dev->settings.serial.speed);
 
 #ifdef OS2
@@ -894,13 +858,13 @@ gp_port_serial_check_speed (GPPort *dev)
 	cfsetispeed (&tio, speed);
 	cfsetospeed (&tio, speed);
         if (tcsetattr (dev->pl->fd, TCSANOW, &tio) < 0) {
-		GP_DEBUG ("Error on 'tcsetattr'.");
+		GP_LOG_E ("Error on 'tcsetattr'.");
                 return GP_ERROR_IO_SERIAL_SPEED;
         }
 
 	/* Clear O_NONBLOCK. */
         if (fcntl (dev->pl->fd, F_SETFL, 0) < 0) {
-		GP_DEBUG ("Error on 'fcntl'.");
+		GP_LOG_E ("Error on 'fcntl'.");
                 return GP_ERROR_IO_SERIAL_SPEED;
         }
 
@@ -913,12 +877,12 @@ gp_port_serial_check_speed (GPPort *dev)
 	 */
 	if (speed != B0) {
 		if (tcgetattr (dev->pl->fd, &tio)) {
-			GP_DEBUG ("Error on 'tcgetattr'.");
+			GP_LOG_E ("Error on 'tcgetattr'.");
 			return (GP_ERROR_IO_SERIAL_SPEED);
 		}
 		if ((cfgetispeed (&tio) != speed) ||
 		    (cfgetospeed (&tio) != speed)) {
-			GP_DEBUG ("Cannot set baudrate to %d...",
+			GP_LOG_E ("Cannot set baudrate to %d...",
 				  dev->settings.serial.speed);
 			return (GP_ERROR_NOT_SUPPORTED);
 		}

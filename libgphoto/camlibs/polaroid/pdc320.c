@@ -1,6 +1,6 @@
 /* pdc320.c
  *
- * Copyright © 2001 Lutz Müller
+ * Copyright 2001 Lutz Mueller
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,7 +21,7 @@
 /* Originally written by Peter Desnoyers <pjd@fred.cambridge.ma.us>,
  * and adapted for gphoto2 by
  * Nathan Stenzel <nathanstenzel@users.sourceforge.net> and
- * Lutz Müller <lutz@users.sourceforge.net>
+ * Lutz Mueller <lutz@users.sourceforge.net>
  *
  * Maintained by Nathan Stenzel <nathanstenzel@users.sourceforge.net>
  *
@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <gphoto2/gphoto2-library.h>
 #include <gphoto2/gphoto2-port-log.h>
@@ -163,7 +164,7 @@ pdc320_command(
 	memset (newcmd, 0xe6, 4); off = 4;
 	off += pdc320_escape (cmd, cmdlen, newcmd + off);
 	off += pdc320_escape (csum, 2, newcmd + off);
-	ret = gp_port_write (port, newcmd, off);
+	ret = gp_port_write (port, (char *)newcmd, off);
 	free(newcmd);
 	return ret;
 }
@@ -180,15 +181,15 @@ pdc320_simple_reply (GPPort *port, const unsigned char expcode,
 	unsigned char csum[2];
 	int calccsum;
 
-	CR (gp_port_read (port, reply, 1));
+	CR (gp_port_read (port, (char *)reply, 1));
 	if (reply[0] != expcode) {
 		GP_DEBUG("*** reply got 0x%02x, expected 0x%02x\n",
 			reply[0], expcode
 		);
 		return GP_ERROR;
 	}
-	CR (gp_port_read (port, reply+1, replysize-1));
-	CR (gp_port_read (port, csum, 2));
+	CR (gp_port_read (port, (char *)reply+1, replysize-1));
+	CR (gp_port_read (port, (char *)csum, 2));
 	calccsum = pdc320_calc_checksum (reply, replysize);
 	if (calccsum != ((csum[1] << 8) | csum[0])) {
 		GP_DEBUG("csum %x vs %x\n",calccsum,((csum[0]<<8)|csum[1]));
@@ -218,7 +219,7 @@ pdc320_init (GPPort *port)
 	
 	/* The initial command is prefixed by 4 raw E6. */
 	memset(e6,0xe6,sizeof(e6));
-	CR (gp_port_write (port, e6, sizeof (e6) ));
+	CR (gp_port_write (port, (char *)e6, sizeof (e6) ));
 
 	GP_DEBUG ("*** PDC320_INIT ***");
 	CR (pdc320_simple_command_reply (port, PDC320_INIT, 5, 1, buf));
@@ -275,7 +276,7 @@ pdc320_size (Camera *camera, int n)
 static int
 pdc320_0c (Camera *camera, int n)
 {
-	int size, csum, i;
+	int size, i;
 	unsigned char buf[3], *xbuf;
 	unsigned char cmd[2];
 	
@@ -285,18 +286,18 @@ pdc320_0c (Camera *camera, int n)
 	/* Write the command */
 	GP_DEBUG ("*** PDC320_0c ***");
 	CR (pdc320_command (camera->port, cmd, sizeof (cmd)));
-	CR (gp_port_read (camera->port, buf, 3));
+	CR (gp_port_read (camera->port, (char *)buf, 3));
 	if (buf[0] != 7)
 		return GP_ERROR;
 	size = (buf[1] << 8) | buf[2];
 	xbuf = malloc (size);
-	CR (gp_port_read (camera->port, xbuf, size));
+	CR (gp_port_read (camera->port, (char *)xbuf, size));
 	for (i=0; i<size; i++) {
 		GP_DEBUG ("buf[%d]=0x%02x", i, xbuf[i]);
 	}
-	CR (gp_port_read (camera->port, buf, 2));
-	csum = (buf[0] << 8) | buf[1];
+	CR (gp_port_read (camera->port, (char *)buf, 2));
 	/* checksum is calculated from both, but i am not clear how. */
+	free (xbuf);
 	return GP_OK;
 }
 
@@ -305,7 +306,7 @@ pdc320_pic (Camera *camera, int n, unsigned char **data, int *size)
 {
 	unsigned char cmd[2];
 	unsigned char buf[2048];
-	int remaining, f1, f2, i, len, checksum;
+	int remaining, f1, f2, i, len;
 	int chunksize=2000;
 
 	/* Get the size of the picture and allocate the memory */
@@ -337,7 +338,7 @@ pdc320_pic (Camera *camera, int n, unsigned char **data, int *size)
 
 		/* Read the frame number */
 		usleep (10000);
-		CR_FREE (gp_port_read (camera->port, buf, 5), *data);
+		CR_FREE (gp_port_read (camera->port, (char *)buf, 5), *data);
 		f1 = (buf[1] << 8) + buf[2];
 		f2 = (buf[3] << 8) + buf[4];
 		GP_DEBUG ("Reading frame %d "
@@ -345,11 +346,10 @@ pdc320_pic (Camera *camera, int n, unsigned char **data, int *size)
 
 		/* Read the actual data */
 		usleep(1000);
-		CR_FREE (gp_port_read (camera->port, *data + i, len), *data);
+		CR_FREE (gp_port_read (camera->port, (char *)*data + i, len), *data);
 		
 		/* Read the checksum */
-		CR_FREE (gp_port_read (camera->port, buf, 2), *data);
-		checksum = (buf[0] << 8) + buf[1];
+		CR_FREE (gp_port_read (camera->port, (char *)buf, 2), *data);
 	}
 
 	return (GP_OK);
@@ -418,7 +418,7 @@ get_file_func (CameraFilesystem *fs, const char *folder, const char *filename,
 	/* Post-processing */
 	switch (type) {
 	case GP_FILE_TYPE_RAW:
-		CR (gp_file_set_data_and_size (file, data, size));
+		CR (gp_file_set_data_and_size (file, (char *)data, size));
 		CR (gp_file_set_mime_type (file, GP_MIME_RAW));
 		break;
 	case GP_FILE_TYPE_NORMAL:
@@ -488,7 +488,7 @@ camera_summary (Camera *camera, CameraText *summary, GPContext *context)
 	char buf[12];
 
 	GP_DEBUG ("*** PDC320_ID ***");
-	CR (pdc320_simple_command_reply (camera->port, PDC320_ID, 0, 12, buf));
+	CR (pdc320_simple_command_reply (camera->port, PDC320_ID, 0, 12, (unsigned char *)buf));
 	sprintf (summary->text, _("Model: %x, %x, %x, %x"), buf[8],buf[9],buf[10],buf[11]);
 	return (GP_OK);
 }

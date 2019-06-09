@@ -1,16 +1,36 @@
+/* library.c
+ *
+ * Copyright (C) 2001,2002 Hubert Figuiere <hfiguiere@teaser.fr>
+ * Copyright (C) 2000,2001,2002 Scott Fritzinger
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA  02110-1301  USA
+ */
+
 /*
   Kodak DC 240/280/3400/5000 driver.
   Maintainer:
        Hubert Figuiere <hfiguiere@teaser.fr>
  */
 
-#define _POSIX_C_SOURCE 199309L
-
 #include "config.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <gphoto2/gphoto2.h>
 #include <gphoto2/gphoto2-port.h>
@@ -131,7 +151,7 @@ static int dc240_packet_write (Camera *camera, unsigned char *packet, int size, 
 write_again:
     /* If retry, give camera some recup time */
     if (x > 0) {
-        GP_SYSTEM_SLEEP(SLEEP_TIMEOUT);
+        usleep(SLEEP_TIMEOUT * 1000);
     }
 
     /* Return error if too many retries */
@@ -239,7 +259,7 @@ static int dc240_wait_for_busy_completion (Camera *camera)
 	BUSY_RETRIES = 100
     };
     unsigned char p[8];
-    int retval;
+    int retval = 0;
     int x=0, done=0;
 
     /* Wait for command completion */
@@ -510,7 +530,7 @@ int dc240_set_speed (Camera *camera, int speed)
     if (retval != GP_OK)
         goto fail;
 
-    GP_SYSTEM_SLEEP(300);
+    usleep(300 * 1000);
     retval = dc240_wait_for_completion(camera);
     if (retval != GP_OK)
 	goto fail;

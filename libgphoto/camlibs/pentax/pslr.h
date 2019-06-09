@@ -43,6 +43,8 @@
 #define PSLR_ID2_K110D   0x1ac
 #define PSLR_ID1_K100D   0x12b9c
 #define PSLR_ID2_K100D   0x189
+#define PSLR_ID1_K100DS  0x12ba2
+#define PSLR_ID2_K100DS  0x189
 #define PSLR_ID1_IST_D   0x12994
 #define PSLR_ID2_IST_D   0x141
 #define PSLR_ID1_IST_DS  0x12aa2
@@ -220,6 +222,7 @@ int pslr_set_jpeg_contrast(pslr_handle_t h, int32_t contrast);
 int pslr_set_jpeg_saturation(pslr_handle_t h, int32_t saturation);
 
 int pslr_set_image_format(pslr_handle_t h, pslr_image_format_t format);
+int pslr_is_image_format_supported(pslr_handle_t h, pslr_image_format_t format);
 int pslr_set_raw_format(pslr_handle_t h, pslr_raw_format_t format);
 
 int pslr_delete_buffer(pslr_handle_t h, int bufno);
